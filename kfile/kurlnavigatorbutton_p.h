@@ -1,0 +1,111 @@
+/*****************************************************************************
+ * Copyright (C) 2006 by Peter Penz <peter.penz@gmx.at>                      *
+ * Copyright (C) 2006 by Aaron J. Seigo <aseigo@kde.org>                     *
+ *                                                                           *
+ * This library is free software; you can redistribute it and/or             *
+ * modify it under the terms of the GNU Library General Public               *
+ * License version 2 as published by the Free Software Foundation.           *
+ *                                                                           *
+ * This library is distributed in the hope that it will be useful,           *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of            *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU         *
+ * Library General Public License for more details.                          *
+ *                                                                           *
+ * You should have received a copy of the GNU Library General Public License *
+ * along with this library; see the file COPYING.LIB.  If not, write to      *
+ * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,      *
+ * Boston, MA 02110-1301, USA.                                               *
+ *****************************************************************************/
+
+#ifndef KURLNAVIGATORBUTTON_P_H
+#define KURLNAVIGATORBUTTON_P_H
+
+#include "kurltogglebutton_p.h"
+
+#include <kio/global.h>
+#include <kio/udsentry.h>
+#include <kurl.h>
+
+class KJob;
+class KUrlNavigator;
+class QPaintEvent;
+
+namespace KIO
+{
+    class Job;
+}
+
+/**
+ * @brief Button of the URL navigator which contains one part of an URL.
+ *
+ * It is possible to drop a various number of items to an UrlNavigatorButton. In this case
+ * a context menu is opened where the user must select whether he wants
+ * to copy, move or link the dropped items to the URL part indicated by
+ * the button.
+ */
+class KUrlNavigatorButton : public KUrlButton
+{
+    Q_OBJECT
+
+public:
+    explicit KUrlNavigatorButton(int index, KUrlNavigator* parent);
+    virtual ~KUrlNavigatorButton();
+    void setIndex(int index);
+    int index() const
+    {
+        return m_index;
+    }
+
+    /** @see QWidget::sizeHint() */
+    virtual QSize sizeHint() const;
+
+    /**
+     * Updates the minimum width of the button and should be invoked
+     * when the text of the button is changed by QAbstractButton::setText().
+     * TODO: this method would not be necessary if QAbstractButton::setText()
+     * would be virtual.
+     */
+    void updateMinimumWidth();
+
+Q_SIGNALS:
+    /**
+     * Is emitted if the URLs \a urls have been dropped
+     * to the destination \a destination.
+     */
+    void urlsDropped(const KUrl::List& urls,
+                     const KUrl& destination);
+
+protected:
+    virtual void paintEvent(QPaintEvent* event);
+    virtual void enterEvent(QEvent* event);
+    virtual void leaveEvent(QEvent* event);
+    virtual void dropEvent(QDropEvent* event);
+    virtual void dragEnterEvent(QDragEnterEvent* event);
+    virtual void dragLeaveEvent(QDragLeaveEvent* event);
+    virtual void mousePressEvent(QMouseEvent* event);
+    virtual void mouseReleaseEvent(QMouseEvent* event);
+    virtual void mouseMoveEvent(QMouseEvent* event);
+
+private Q_SLOTS:
+    void updateNavigatorUrl();
+    void startPopupDelay();
+    void stopPopupDelay();
+    void startListJob();
+    void entriesList(KIO::Job* job, const KIO::UDSEntryList& entries);
+    void listJobFinished(KJob* job);
+
+private:
+    int arrowWidth() const;
+    bool isAboveArrow(int x) const;
+    bool isTextClipped() const;
+
+private:
+    int m_index;
+    bool m_hoverArrow;
+    QPoint m_popupPosition;
+    QTimer* m_popupDelay;
+    KIO::Job* m_listJob;
+    QStringList m_subdirs;
+};
+
+#endif

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=PGM
+Name[hi]=पीजीएम
+Name[ml]=പിജിഎം
+Name[sr]=ПГМ
+Name[te]=పిజిఎం
+Name[x-test]=xxPGMxx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat=pgm
+X-KDE-MimeType=image/x-portable-graymap
+X-KDE-Read=true
+X-KDE-Write=true

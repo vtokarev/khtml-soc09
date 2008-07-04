@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=HDR
+Name[hi]=एचडीआर
+Name[ml]=എച്ച്ഡിആര്‍
+Name[sr]=ХДР
+Name[te]=హెచ్ డి ఆర్
+Name[x-test]=xxHDRxx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat=hdr
+X-KDE-MimeType=image/x-hdr
+X-KDE-Read=true
+X-KDE-Write=false

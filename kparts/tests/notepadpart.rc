@@ -1,0 +1,14 @@
+<!DOCTYPE kpartgui>
+<kpartgui name="NotepadPart" version="2">
+<MenuBar>
+ <Menu name="file"><Text>&amp;File</Text>
+  <Menu name="NotepadSubMenu"><text>Notepad Stuff</text>
+    <Action name="searchreplace"/>
+  </Menu>
+ </Menu>
+ <Menu name="edit"><Text>&amp;Edit</Text>
+  <Action name="searchreplace"/>
+ </Menu>
+</MenuBar>
+<StatusBar/>
+</kpartgui>

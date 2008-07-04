@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=EXR
+Name[hi]=ईएक्सआर
+Name[ml]=ഇഎക്സ്ആര്‍
+Name[sr]=ЕИксР
+Name[te]=ఇఎక్స్ ఆర్
+Name[x-test]=xxEXRxx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat=exr,EXR
+X-KDE-MimeType=image/x-exr
+X-KDE-Read=true
+X-KDE-Write=false

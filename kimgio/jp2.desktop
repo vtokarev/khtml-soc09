@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=JP2
+Name[hi]=जेपी२ 
+Name[ml]=ജെപി2
+Name[sr]=ЈП2
+Name[te]=జెపి2
+Name[x-test]=xxJP2xx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat=jp2
+X-KDE-MimeType=image/jpeg2000
+X-KDE-Read=true
+X-KDE-Write=true

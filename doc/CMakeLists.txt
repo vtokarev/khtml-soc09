@@ -1,0 +1,11 @@
+
+add_subdirectory( common )
+if (NOT WIN32)
+    add_subdirectory( checkXML )
+    add_subdirectory( kbuildsycoca4 )
+    add_subdirectory( kdeoptions )
+	add_subdirectory( makekdewidgets )
+    add_subdirectory( sonnet )
+    add_subdirectory( qtoptions )
+    add_subdirectory( kde4-config )
+endif (NOT WIN32)

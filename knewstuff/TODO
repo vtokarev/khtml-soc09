@@ -1,0 +1,49 @@
+- make dxs engine work with cache
+- verify all dxs methods work (comments, rating, etc.)
+- expose all information menu actions in the new interface
+- referencecount entries to save memory (and so entry state will be shared between feeds, providers, etc.)
+- Use goya and Model/View for faster showing/searching, etc.
+  - make cleanup changes suggessted by Eugene
+  - Zoomed thumbnail tooltip for images
+
+
+- Fix downloadDialog() and uploadDialog() methods that according to apidox report changes with signals, but Engine
+   class has no signals...
+
+- Show rating, downloads, etc.
+- Add support for categories
+- add unit tests for everything/
+- make sure checksum works
+- make sure caching works
+- make sure signatures work
+- fix issues in download dialog (signal names, etc.)
+
+FEATURES:
+- support gui switching scope (user to system, and back)
+- support multiple provider urls with ui to add/remove/edit
+- REST voting
+
+- Add support for multiple providersurl's to the knsrc file, 
+as well as categories with different options (targetpath, uncompress, etc.)
+
+- scan for installedfiles & unregister if not found, so user can re-install
+
+- make an app that shows all the available knsrc files, and launches download/upload dialog on selected one
+
+
+// OLD TODO's below
+
+- porting signals to Q_SIGNALS, slots to Q_SLOTS etc.
+- mass indentation (which style, which tool?)
+- API docs
+- copyrights
+- style questions (0 vs. NULL, iterators vs. for-loop etc.)
+
+- knewstuffsecure
+- packager (plasmagik)
+
+- server support
+
+
+
+

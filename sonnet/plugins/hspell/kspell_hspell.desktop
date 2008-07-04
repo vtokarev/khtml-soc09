@@ -1,0 +1,27 @@
+[Desktop Entry]
+Type=Service
+X-KDE-ServiceTypes=Sonnet/SpellClient
+X-KDE-Library=kspell_hspell
+X-KDE-PluginInfo-Author=Mashrab Kuvatov
+X-KDE-PluginInfo-Email=kmashrab@uni-bremen.de
+X-KDE-PluginInfo-Name=kspell_hspell
+X-KDE-PluginInfo-Version=0.0.1
+X-KDE-PluginInfo-Website=http://www.kde.org
+X-KDE-PluginInfo-Category=Clients
+X-KDE-PluginInfo-Depends=
+X-KDE-PluginInfo-License=LGPL
+X-KDE-PluginInfo-EnabledByDefault=true
+Name=HSpell
+Name[ar]=ه‍ سبل
+Name[bn]=এইচ-স্পেল
+Name[gu]=હસ્પેલ
+Name[hi]=एचस्पेल
+Name[kn]=ಎಚ್ ಸ್ಪೆಲ್
+Name[ml]=എച്ച്സ്പെല്‍
+Name[ne]=एच स्पेल
+Name[sr]=Хспел
+Name[sr@latin]=Hspell
+Name[sv]=Hspell
+Name[ta]=ஹஉச்சரிப்பு
+Name[te]=హెచ్ స్పెల్
+Name[x-test]=xxHSpellxx

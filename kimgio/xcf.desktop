@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=XCF
+Name[hi]=एक्ससीएफ़
+Name[ml]=എക്സ്സിഎഫ്
+Name[sr]=ИксЦФ
+Name[te]=ఎక్స్ సిఎఫ్
+Name[x-test]=xxXCFxx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat=xcf,XCF
+X-KDE-MimeType=image/x-xcf
+X-KDE-Read=true
+X-KDE-Write=false

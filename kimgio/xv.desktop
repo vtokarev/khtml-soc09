@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=XV
+Name[hi]=एक्सवी
+Name[ml]=എക്സ്‌വി
+Name[sr]=ИксВ
+Name[te]=ఎక్స్ వి
+Name[x-test]=xxXVxx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat=xv
+X-KDE-MimeType=
+X-KDE-Read=true
+X-KDE-Write=true

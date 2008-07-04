@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=TGA
+Name[hi]=टीजीए
+Name[ml]=ടിജിഎ
+Name[sr]=ТГА
+Name[te]=టిజిఏ
+Name[x-test]=xxTGAxx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat=tga,TGA
+X-KDE-MimeType=image/x-tga
+X-KDE-Read=true
+X-KDE-Write=true

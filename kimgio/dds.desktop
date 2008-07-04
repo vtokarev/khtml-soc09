@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=DDS
+Name[hi]=डीडीएस
+Name[ml]=ഡിഡിഎസ്
+Name[sr]=ДДС
+Name[te]=డిడిఎస్
+Name[x-test]=xxDDSxx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat=dds
+X-KDE-MimeType=image/x-dds
+X-KDE-Read=true
+X-KDE-Write=false

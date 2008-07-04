@@ -1,0 +1,24 @@
+[Desktop Entry]
+Type=Service
+X-KDE-ServiceTypes=Sonnet/SpellClient
+X-KDE-Library=kspell_enchant
+X-KDE-PluginInfo-Author=Zack Rusin
+X-KDE-PluginInfo-Email=zack@kde.org
+X-KDE-PluginInfo-Name=kspell_enchant
+X-KDE-PluginInfo-Version=0.0.1
+X-KDE-PluginInfo-Website=http://www.kde.org
+X-KDE-PluginInfo-Category=Clients
+X-KDE-PluginInfo-Depends=
+X-KDE-PluginInfo-License=LGPL
+X-KDE-PluginInfo-EnabledByDefault=true
+Name=Enchant
+Name[ar]=إنشنت
+Name[gu]=એન્ચાન્ટ
+Name[hi]=एनचैंट
+Name[kn]=ಎಂಚಾಂಟ್
+Name[ml]=എന്‍ചാന്റ്
+Name[ne]=मोहीत पार्नु
+Name[sr]=Енчант
+Name[ta]=வசீகரம்
+Name[x-test]=xxEnchantxx
+Name[zh_CN]=增强

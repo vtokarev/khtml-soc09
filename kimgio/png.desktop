@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=PNG
+Name[hi]=पीएनजी
+Name[ml]=പിഎന്‍ജി
+Name[sr]=ПНГ
+Name[te]=పిఎన్ జి
+Name[x-test]=xxPNGxx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat=png
+X-KDE-MimeType=image/png
+X-KDE-Read=true
+X-KDE-Write=true

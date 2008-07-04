@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=RGB
+Name[hi]=आरजीबी
+Name[kn]=ಕೆ.ಹ.ನೀ/RGB
+Name[ml]=ആര്‍ജിബി
+Name[sr]=РГБ
+Name[te]=ఆర్ జి బి
+Name[x-test]=xxRGBxx
+Type=Service
+X-KDE-ServiceTypes=QImageIOPlugins
+X-KDE-ImageFormat= rgb,RGB,rgba,RGBA,bw,BW,sgi,SGI
+X-KDE-MimeType=image/x-rgb
+X-KDE-Read=true
+X-KDE-Write=true

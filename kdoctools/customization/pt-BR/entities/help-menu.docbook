@@ -1,0 +1,52 @@
+<variablelist>
+<varlistentry>
+<term>
+<menuchoice>
+<shortcut>
+<keycombo action="simul"><keycap>F1</keycap></keycombo>
+</shortcut>
+<guimenu>Ajuda</guimenu>
+<guimenuitem>Conteúdo...</guimenuitem>
+</menuchoice>
+</term>
+<listitem><para><action>Invoca a ajuda do KDE</action>, niniciando a ajuda do &kappname;.</para></listitem>
+</varlistentry>
+
+<varlistentry>
+<term><menuchoice>
+<shortcut>
+<keycombo action="simul">&Shift;<keycap>F1</keycap></keycombo>
+</shortcut>
+<guimenu>Ajuda</guimenu>
+<guimenuitem>O que é Isto?</guimenuitem>
+</menuchoice>
+</term>
+<listitem><para><action>Muda o cursor do mouse para uma mistura de uma seta com um ponto de interrogação.</action>  Ao clicar nos itens do &kappname; irás abrir uma janela de ajuda (se existir alguma para o item em particular) que explica a função do item.</para></listitem>
+</varlistentry>
+
+
+<varlistentry>
+<term><menuchoice>
+<guimenu>Ajuda</guimenu>
+<guimenuitem>Reportar Erro...</guimenuitem>
+</menuchoice></term>
+<listitem><para><action>Abre a janela para Reportar Erros</action> onde pode 
+relatar um erro ou <quote>sugerir</quote> uma funcionalidade.</para></listitem>
+</varlistentry>
+
+<varlistentry>
+<term><menuchoice>
+<guimenu>Ajuda</guimenu>
+<guimenuitem>Sobre o &kappname;</guimenuitem>
+</menuchoice></term>
+<listitem><para><action>Isto irá mostrar a versão e as informações do autor.</action></para></listitem>
+</varlistentry>
+
+<varlistentry>
+<term><menuchoice>
+<guimenu>Ajuda</guimenu>
+<guimenuitem>Sobre o KDE</guimenuitem>
+</menuchoice></term>
+<listitem><para><action>Isto mostra a versão do KDE bem como outras informações básicas.</action></para></listitem>
+</varlistentry>
+</variablelist>
