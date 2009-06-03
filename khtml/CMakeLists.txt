@@ -6,6 +6,7 @@ KDE4_NO_ENABLE_FINAL(khtml)
 add_definitions(-DENABLE_SVG)
 add_definitions(-DENABLE_SVG_FONTS)
 add_definitions(-DWTF_PLATFORM_QT)
+add_definitions(-DENABLE_DUMP)
 ########svg#########
 
 add_subdirectory( tests )
