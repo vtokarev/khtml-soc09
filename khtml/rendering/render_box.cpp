@@ -866,6 +866,8 @@ QRect RenderBox::overflowClipRect(int tx, int ty)
 
     // Substract out scrollbars if we have them.
     if (m_layer) {
+        if (m_layer->hasReversedScrollbar())
+            clipx += m_layer->verticalScrollbarWidth();
         clipw -= m_layer->verticalScrollbarWidth();
         cliph -= m_layer->horizontalScrollbarHeight();
     }
@@ -1081,15 +1083,11 @@ void RenderBox::relativePositionOffset(int &tx, int &ty) const
         tx -= style()->right().width(containingBlockWidth());
     if(!style()->top().isAuto())
     {
-        if (!style()->top().isPercent()
-                || containingBlock()->style()->height().isFixed())
-            ty += style()->top().width(containingBlockHeight());
+        ty += style()->top().width(containingBlockHeight());
     }
     else if(!style()->bottom().isAuto())
     {
-        if (!style()->bottom().isPercent()
-                || containingBlock()->style()->height().isFixed())
-            ty -= style()->bottom().width(containingBlockHeight());
+        ty -= style()->bottom().width(containingBlockHeight());
     }
 }
 
