@@ -409,6 +409,7 @@ DocumentImpl::DocumentImpl(DOMImplementationImpl *_implementation, KHTMLView *v)
     m_docChanged = false;
     m_elemSheet = 0;
     m_tokenizer = 0;
+    m_decoder = 0;
     m_doctype = 0;
     m_implementation = _implementation;
     m_implementation->ref();
@@ -1674,7 +1675,6 @@ void DocumentImpl::write( const QString &text )
         if (m_view)
             m_view->part()->resetFromScript();
         m_tokenizer->setAutoClose();
-        write(QLatin1String("<html>"));
     }
     m_tokenizer->write(text, false);
 }
@@ -1689,6 +1689,11 @@ void DocumentImpl::finishParsing (  )
 {
     if(m_tokenizer)
         m_tokenizer->finish();
+}
+
+QString DocumentImpl::completeURL(const QString& url) const
+{
+    return KUrl(baseURL(),url /*,m_decoderMibEnum*/).url();
 }
 
 void DocumentImpl::setUserStyleSheet( const QString& sheet )
