@@ -281,7 +281,8 @@ PartMonitor::~PartMonitor()
 {
    if (this == sm_highestMonitor)
 	sm_highestMonitor = 0;
-   qDeleteAll(m_eventLoopStack);
+   while (!m_eventLoopStack.isEmpty())
+       exitLoop();
 }
 
 
@@ -300,7 +301,6 @@ void PartMonitor::waitForCompletion()
         //m_timeout_timer->stop();
 	//m_timeout_timer->start( visual ? 100 : 2, true );
     }
-
     QTimer::singleShot( 0, this, SLOT( finishTimers() ) );
     enterLoop();
 }
@@ -327,9 +327,10 @@ void PartMonitor::timeout()
 
 void PartMonitor::finishTimers()
 {
+
     KJS::Window *w = KJS::Window::retrieveWindow( m_part );
     --m_timer_waits;
-    if ( m_timer_waits && (w && w->winq->hasTimers()) || m_part->inProgress()) {
+    if ( m_timer_waits && (w && w->winq->hasTimers() || m_part->inProgress())) {
         // wait a bit
         QTimer::singleShot( 10, this, SLOT(finishTimers() ) );
         return;
@@ -349,8 +350,11 @@ void PartMonitor::partCompleted()
 
 static void signal_handler( int )
 {
-    printf( "timeout\n" );
-    abort();
+    printf( "timeout - this should *NOT* happen, it is likely the part's completed() signal was not emitted - FIXME!!\n" );
+    if (PartMonitor::sm_highestMonitor)
+        PartMonitor::sm_highestMonitor->exitLoop();
+    else
+        abort();
 }
 // -------------------------------------------------------------------------
 
@@ -626,6 +630,8 @@ int main(int argc, char *argv[])
     options.add("noxvfb", ki18n("Do not use Xvfb"));
     options.add("o");
     options.add("output <directory>", ki18n("Put output in <directory> instead of <base_dir>/output"));
+    options.add("r");
+    options.add("reference <directory>", ki18n("Use <directory> as reference instead of <base_dir>/baseline"));
     options.add("+[base_dir]", ki18n("Directory containing tests, basedir and output directories. Only regarded if -b is not specified."));
     options.add("+[testcases]", ki18n("Relative path to testcase, or directory of testcases to be run (equivalent to -t)."));
 
@@ -791,6 +797,7 @@ int main(int argc, char *argv[])
     RegressionTest *regressionTest = new RegressionTest(part,
                                                         baseDir,
                                                         args->getOption("output"),
+                                                        args->getOption("reference"),
                                                         args->isSet("genoutput"),
                                                         !args->isSet( "html" ),
                                                         !args->isSet( "js" ));
@@ -870,7 +877,7 @@ int main(int argc, char *argv[])
 
 RegressionTest *RegressionTest::curr = 0;
 
-RegressionTest::RegressionTest(KHTMLPart *part, const QString &baseDir, const QString &outputDir,
+RegressionTest::RegressionTest(KHTMLPart *part, const QString &baseDir, const QString &outputDir, const QString &baselineDir,
 			       bool _genOutput, bool runJS, bool runHTML)
   : QObject(part)
 {
@@ -886,6 +893,15 @@ RegressionTest::RegressionTest(KHTMLPart *part, const QString &baseDir, const QS
         createMissingDirs(outputDir + "/");	//krazy:exclude=duoblequote_chars DOM demands chars
         m_outputDir = outputDir;
     }
+    m_baselineDir = baselineDir;
+    m_baselineDir = m_baselineDir.replace( "//", "/" );
+    if (m_baselineDir.endsWith( "/" ) )
+        m_baselineDir = m_baselineDir.left( m_baselineDir.length() - 1 );
+    if (m_baselineDir.isEmpty())
+        m_baselineDir = m_baseDir + "/baseline";
+    else {
+        createMissingDirs(m_baselineDir + "/");
+    }
     m_genOutput = _genOutput;
     m_runJS = runJS;
     m_runHTML =  runHTML;
@@ -893,7 +909,8 @@ RegressionTest::RegressionTest(KHTMLPart *part, const QString &baseDir, const QS
     m_failures_work = m_failures_fail = 0;
     m_errors = 0;
 
-    ::unlink( QFile::encodeName( m_outputDir + "/links.html" ) );
+    if (!m_genOutput)
+        ::unlink( QFile::encodeName( m_outputDir + "/links.html" ) );
     QFile f( m_outputDir + "/empty.html" );
     QString s;
     f.open( QIODevice::WriteOnly | QIODevice::Truncate );
@@ -981,7 +998,7 @@ bool RegressionTest::runTests(QString relPath, bool mustExist, QStringList failu
     }
     else if (info.isFile()) {
 
-        alarm( 400 );
+        alarm( 12 );
 
         khtml::Cache::init();
 
@@ -1015,8 +1032,10 @@ bool RegressionTest::runTests(QString relPath, bool mustExist, QStringList failu
                 testStaticFile(relPath);
 	}
 	else if (filename.endsWith(".js")) {
-            if ( m_runJS )
+            if ( m_runJS ) {
+                alarm( 120 );
                 testJSFile(relPath);
+            }
 	}
 	else if (mustExist) {
 	    fprintf(stderr,"%s: Not a valid test file (must be .htm(l) or .js)\n",qPrintable(relPath));
@@ -1359,6 +1378,7 @@ void RegressionTest::doFailureReport( const QString& test, int failures )
     QString domDiff;
 
     QString relOutputDir = makeRelativePath(m_baseDir, m_outputDir);
+    QString relBaselineDir = makeRelativePath(m_baseDir, m_baselineDir);
 
     // are blocking reads possible with K3Process?
     QString pwd = QDir::currentPath();
@@ -1366,15 +1386,15 @@ void RegressionTest::doFailureReport( const QString& test, int failures )
 
     if ( failures & RenderFailure ) {
         renderDiff += "<pre>";
-        renderDiff += getDiff( QString::fromLatin1( "diff -u baseline/%1-render %3/%2-render" )
-                            .arg ( test, test, relOutputDir ) );
+        renderDiff += getDiff( QString::fromLatin1( "diff -u %4/%1-render %3/%2-render" )
+                            .arg ( test, test, relOutputDir, relBaselineDir ) );
         renderDiff += "</pre>";
     }
 
     if ( failures & DomFailure ) {
         domDiff += "<pre>";
-        domDiff += getDiff( QString::fromLatin1( "diff -u baseline/%1-dom %3/%2-dom" )
-                            .arg ( test, test, relOutputDir ) );
+        domDiff += getDiff( QString::fromLatin1( "diff -u %4/%1-dom %3/%2-dom" )
+                            .arg ( test, test, relOutputDir, relBaselineDir ) );
         domDiff += "</pre>";
     }
 
@@ -1396,7 +1416,7 @@ void RegressionTest::doFailureReport( const QString& test, int failures )
                   "var doflicker = 1;\n"
                   "var t = 1;\n"
                   "var lastb=0;\n" )
-          .arg( relpath+"/baseline/"+test+"-dump.png" )
+          .arg( relpath+"/"+relBaselineDir+"/"+test+"-dump.png" )
           .arg( testFile+"-dump.png" );
     cl += QString( "function toggleVisible(visible) {\n"
                   "     document.getElementById('render').style.visibility= visible == 'render' ? 'visible' : 'hidden';\n"
@@ -1452,7 +1472,7 @@ void RegressionTest::doFailureReport( const QString& test, int failures )
 
     cl += QString( "<hr>"
                    "<img style='border: solid 5px gray' src=\"%1\" id='image'>" )
-          .arg( relpath+"/baseline/"+test+"-dump.png" );
+          .arg( relpath+"/"+relBaselineDir+"/"+test+"-dump.png" );
 
     cl += "<div id='render' class='diff'>" + renderDiff + "</div>";
     cl += "<div id='dom' class='diff'>" + domDiff + "</div>";
@@ -1537,8 +1557,8 @@ void RegressionTest::testStaticFile(const QString & filename)
         reportResult( checkOutput(filename+"-render"), "RENDER" );
         if ( m_known_failures & PaintFailure )
             m_known_failures = AllFailure;
-        renderToImage().save(m_baseDir + "/baseline/" + filename + "-dump.png","PNG", 60);
-        printf("Generated %s\n", qPrintable(QString( m_baseDir + "/baseline/" + filename + "-dump.png" )) );
+        renderToImage().save(m_baselineDir + "/" + filename + "-dump.png","PNG", 60);
+        printf("Generated %s\n", qPrintable(QString( m_baselineDir + "/" + filename + "-dump.png" )) );
         reportResult( true, "PAINT" );
     } else {
         int failures = NoFailure;
@@ -1650,7 +1670,7 @@ void RegressionTest::testJSFile(const QString & filename )
 RegressionTest::CheckResult RegressionTest::checkPaintdump(const QString &filename)
 {
     QString againstFilename( filename + "-dump.png" );
-    QString absFilename = QFileInfo(m_baseDir + "/baseline/" + againstFilename).absoluteFilePath();
+    QString absFilename = QFileInfo(m_baselineDir + "/" + againstFilename).absoluteFilePath();
     if ( svnIgnored( absFilename ) ) {
         m_known_failures = NoFailure;
         return Ignored;
@@ -1683,7 +1703,7 @@ RegressionTest::CheckResult RegressionTest::checkPaintdump(const QString &filena
 
 RegressionTest::CheckResult RegressionTest::checkOutput(const QString &againstFilename)
 {
-    QString absFilename = QFileInfo(m_baseDir + "/baseline/" + againstFilename).absoluteFilePath();
+    QString absFilename = QFileInfo(m_baselineDir + "/" + againstFilename).absoluteFilePath();
     if ( svnIgnored( absFilename ) ) {
         m_known_failures = NoFailure;
         return Ignored;
