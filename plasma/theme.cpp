@@ -123,7 +123,6 @@ public:
 
     QString findInTheme(const QString &image, const QString &theme) const;
     void compositingChanged();
-    void discardCache();
     void discardCache(bool recreateElementsCache);
     void scheduledCacheUpdate();
     void colorsChanged();
@@ -211,11 +210,6 @@ void ThemePrivate::compositingChanged()
         emit q->themeChanged();
     }
 #endif
-}
-
-void ThemePrivate::discardCache()
-{
-    discardCache(true);
 }
 
 void ThemePrivate::discardCache(bool recreateElementsCache)
@@ -564,7 +558,7 @@ QColor Theme::color(ColorRole role) const
             break;
 
         case HighlightColor:
-            return d->colorScheme.background(KColorScheme::ActiveBackground).color();
+            return d->colorScheme.decoration(KColorScheme::HoverColor).color();
             break;
 
         case BackgroundColor:
@@ -657,7 +651,7 @@ bool Theme::findInCache(const QString &key, QPixmap &pix)
 bool Theme::findInCache(const QString &key, QPixmap &pix, unsigned int lastModified)
 {
     if (d->useCache() && lastModified > d->pixmapCache->timestamp()) {
-        d->discardCache();
+        d->discardCache(true);
     }
 
     return findInCache(key, pix);

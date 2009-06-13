@@ -401,13 +401,19 @@ void ToolBox::save(KConfigGroup &cg) const
     group.writeEntry("offset", offset);
 }
 
-void ToolBox::load()
+void ToolBox::load(const KConfigGroup &containmentGroup)
 {
     if (!d->movable) {
         return;
     }
 
-    KConfigGroup group = d->containment->config();
+    KConfigGroup group;
+    if (containmentGroup.isValid()) {
+        group = containmentGroup;
+    } else {
+        group = d->containment->config();
+    }
+
     group = KConfigGroup(&group, "ToolBox");
 
     if (!group.hasKey("corner")) {
@@ -496,7 +502,7 @@ void ToolBox::reposition()
         if (!d->containment->view() || !d->containment->view()->transform().isScaling()) {
             if (QApplication::layoutDirection() == Qt::RightToLeft) {
                 if (avail.top() > screenGeom.top()) {
-                    setPos(avail.topLeft() - QPoint(0, boundingRect().height()));
+                    setPos(avail.topLeft() - QPoint(0, avail.top()));
                     setCorner(ToolBox::Left);
                 } else if (avail.left() > screenGeom.left()) {
                     setPos(avail.topLeft() - QPoint(boundingRect().width(), 0));
@@ -507,7 +513,7 @@ void ToolBox::reposition()
                 }
             } else {
                 if (avail.top() > screenGeom.top()) {
-                    setPos(avail.topRight() - QPoint(0, boundingRect().height()));
+                    setPos(avail.topRight() - QPoint(boundingRect().width(), -avail.top()));
                     setCorner(ToolBox::Right);
                 } else if (avail.right() < screenGeom.right()) {
                     setPos(avail.topRight() - QPoint(boundingRect().width(), 0));

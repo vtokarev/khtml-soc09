@@ -62,12 +62,8 @@
  */
 #define KSYCOCA_FILENAME "ksycoca4"
 
-#ifdef HAVE_SYS_MMAN_H
-#include <sys/mman.h>
-#endif
-
-#ifdef Q_OS_SOLARIS
-extern "C" int madvise(caddr_t, size_t, int);
+#if HAVE_MADVISE
+#include <sys/mman.h> // This #include was checked when looking for posix_madvise
 #endif
 
 #ifndef MAP_FAILED
@@ -142,7 +138,7 @@ bool KSycocaPrivate::tryMmap()
         return false;
     } else {
 #ifdef HAVE_MADVISE
-        (void) madvise((char*)sycoca_mmap, sycoca_size, MADV_WILLNEED);
+        (void) posix_madvise((void*)sycoca_mmap, sycoca_size, MADV_WILLNEED);
 #endif // HAVE_MADVISE
         return true;
     }
@@ -411,20 +407,22 @@ bool KSycocaPrivate::checkDatabase(BehaviorsIfNotFound ifNotFound)
 
     closeDatabase(); // close the dummy one
 
+    // We can only use the installed ksycoca file if kdeinit+klauncher+kded are running,
+    // since kded is what keeps the file uptodate.
+    const bool kdeinitRunning = QDBusConnection::sessionBus().interface()->isServiceRegistered("org.kde.klauncher");
+
     // Check if new database already available
-    if (openDatabase(ifNotFound & IfNotFoundOpenDummy)) {
+    if (kdeinitRunning && openDatabase(ifNotFound & IfNotFoundOpenDummy)) {
         if (checkVersion()) {
             // Database exists, and version is ok.
             return true;
         }
     }
 
-    static bool triedLaunchingKdeinit = false;
-    if ((ifNotFound & IfNotFoundRecreate) && !triedLaunchingKdeinit) { // try only once
-        triedLaunchingKdeinit = true;
+    if (ifNotFound & IfNotFoundRecreate) {
         // Well, if kdeinit is not running we need to launch it,
         // but otherwise we simply need to run kbuildsycoca to recreate the sycoca file.
-        if (!QDBusConnection::sessionBus().interface()->isServiceRegistered("org.kde.klauncher")) {
+        if (!kdeinitRunning) {
             kDebug(7011) << "We have no database.... launching kdeinit";
             KToolInvocation::klauncher(); // this calls startKdeinit, and blocks until it returns
             // and since kdeinit4 only returns after kbuildsycoca4 is done, we can proceed.
