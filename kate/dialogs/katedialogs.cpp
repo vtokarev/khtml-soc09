@@ -504,7 +504,7 @@ KateEditConfigTab::KateEditConfigTab(QWidget *parent)
 
   // add all tabs
   tabWidget->insertTab(0, tmpWidget, i18n("General"));
-  tabWidget->insertTab(1, selectConfigTab, i18n("Cursor & Selection"));
+  tabWidget->insertTab(1, selectConfigTab, i18n("Cursor && Selection"));
   tabWidget->insertTab(2, indentConfigTab, i18n("Indentation"));
   tabWidget->insertTab(3, completionConfigTab, i18n("Auto Completion"));
   tabWidget->insertTab(4, viInputModeConfigTab, i18n("Vi Input Mode"));
@@ -743,7 +743,7 @@ KateSaveConfigTab::KateSaveConfigTab( QWidget *parent )
   // add all tabs
   tabWidget->insertTab(0, tmpWidget, i18n("General"));
   tabWidget->insertTab(1, tmpWidget2, i18n("Advanced"));
-  tabWidget->insertTab(2, modeConfigPage, i18n("Modes & Filetypes"));
+  tabWidget->insertTab(2, modeConfigPage, i18n("Modes && Filetypes"));
 
   connect(modeConfigPage, SIGNAL(changed()), this, SLOT(slotChanged()));
 

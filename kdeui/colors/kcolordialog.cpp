@@ -65,6 +65,7 @@
 #include <klocale.h>
 #include <kmessagebox.h>
 #include <kseparator.h>
+#include <kstandarddirs.h>
 #include <kcolorcollection.h>
 
 #include "kcolormimedata.h"
@@ -573,16 +574,31 @@ static const char * const *namedColorFilePath(void)
 {
     //
     // 2000-02-05 Espen Sand.
-    // Add missing filepaths here. Make sure the last entry is 0!
+    // Add missing filepaths here. Make sure the last entry is 0, 0!
+    //
+    // 2009-06-16 Pino Toscano
+    //
+    // You can specify either absolute paths or relative locations
+    // wrt KStandardDirs resources. In either way, there should be two
+    // "strings" for each path.
+    // - absolute path: specify it directly, then add 0 as second item
+    //   * example: "/usr/share/X11/rgb.txt", 0,
+    // - KStandardDirs location: specify the filename as first item,
+    //   then add the resource as second
+    //   * example: "kdeui/rgb.txt", "data",
     //
     static const char * const path[] = {
+#ifdef Q_WS_X11
 #ifdef X11_RGBFILE
-        X11_RGBFILE,
+        X11_RGBFILE, 0,
 #endif
-        "/usr/share/X11/rgb.txt",
-        "/usr/X11R6/lib/X11/rgb.txt",
-        "/usr/openwin/lib/X11/rgb.txt", // for Solaris.
-        0
+        "/usr/share/X11/rgb.txt", 0,
+        "/usr/X11R6/lib/X11/rgb.txt", 0,
+        "/usr/openwin/lib/X11/rgb.txt", 0, // for Solaris.
+#else /* systems without X11 */
+        "kdeui/rgb.txt", "data",
+#endif
+        0, 0
     };
     return path;
 }
@@ -604,8 +620,18 @@ KColorTable::readNamedColor(void)
     //
 
     const char * const *path = namedColorFilePath();
-    for (int i = 0; path[i]; ++i) {
-        QFile paletteFile(path[i]);
+    for (int i = 0; path[i]; i += 2) {
+        QString file;
+        if (path[i + 1]) {
+            file = KStandardDirs::locate(path[i + 1], QString::fromLatin1(path[i]));
+            if (file.isEmpty()) {
+                continue;
+            }
+        } else {
+            file = QString::fromLatin1(path[i]);
+        }
+
+        QFile paletteFile(file);
         if (!paletteFile.open(QIODevice::ReadOnly)) {
             continue;
         }
@@ -666,8 +692,12 @@ KColorTable::KColorTablePrivate::slotShowNamedColorReadError(void)
                            "file location(s) were examined:\n");
 
         const char * const *path = namedColorFilePath();
-        for (int i = 0; path[i]; ++i) {
-            msg += path[i];
+        for (int i = 0; path[i]; i += 2) {
+            if (path[i + 1]) {
+                msg += QLatin1String(path[i + 1]) + ", " + QString::fromLatin1(path[i]);
+            } else {
+                msg += QLatin1String(path[i]);
+            }
             msg += '\n';
         }
         KMessageBox::sorry(q, msg);

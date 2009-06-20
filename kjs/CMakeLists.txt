@@ -38,9 +38,9 @@ option(KJS_FORCE_DISABLE_PCRE "Force building of KJS without PCRE. Doing this wi
 configure_file(global.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/global.h )
 configure_file(config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
 
-include_directories(${KDE4_KDECORE_INCLUDES} ${CMAKE_SOURCE_DIR}/wtf ${KDEWIN32_INCLUDES} )
+include_directories(${KDE4_KDECORE_INCLUDES} ${CMAKE_SOURCE_DIR}/wtf ${KDEWIN_INCLUDES} )
 
-macro_log_feature(PCRE_FOUND "PCRE" "Perl Compatible Regular Expression" "www.pcre.org" FALSE "" "Lack of PCRE will result in extremely poor regular expression support in KJS. ")
+macro_log_feature(PCRE_FOUND "PCRE" "Perl Compatible Regular Expression" "http://www.pcre.org" FALSE "" "Lack of PCRE will result in extremely poor regular expression support in KJS. ")
 
 # the check for pcre is in kdelibs/CMakeLists.txt
 if(PCRE_FOUND  AND NOT  KJS_FORCE_DISABLE_PCRE)
@@ -193,7 +193,7 @@ endif (NOT DEFINED QT_ONLY)
 kde4_add_library(${KJSLIBNAME} SHARED ${kjs_LIB_SRCS})
 
 if(WIN32)
-   target_link_libraries(${KJSLIBNAME} ${KDEWIN32_LIBRARIES})
+   target_link_libraries(${KJSLIBNAME} ${KDEWIN_LIBRARIES})
 endif(WIN32)
 
 if(CMAKE_THREAD_LIBS_INIT)
@@ -215,10 +215,13 @@ install(TARGETS ${KJSLIBNAME} EXPORT kdelibsLibraryTargets ${INSTALL_TARGETS_DEF
 
 set(kjs_SRCS kjs.cpp)
 
+#required by win32 see  kdelibs/cmake/modules/kde4Macros.cmake kde4_add_manifest
+set (kjs_bin_OUTPUT_NAME kjs)
+
 # 'kjs_bin' because cmake doesn't like having a lib and app with the same name
 kde4_add_executable(kjs_bin NOGUI ${kjs_SRCS})
 
-set_target_properties(kjs_bin PROPERTIES OUTPUT_NAME kjs)
+set_target_properties(kjs_bin PROPERTIES OUTPUT_NAME ${kjs_bin_OUTPUT_NAME})
 
 target_link_libraries(kjs_bin ${KJSLIBNAME})
 

@@ -10,9 +10,9 @@ include(CPack)
 
 set (KDE_VERSION_MAJOR 4)
 set (KDE_VERSION_MINOR 2)
-set (KDE_VERSION_RELEASE 91)
+set (KDE_VERSION_RELEASE 92)
 set (KDE_VERSION "${KDE_VERSION_MAJOR}.${KDE_VERSION_MINOR}.${KDE_VERSION_RELEASE}" )
-set (KDE_VERSION_STRING "${KDE_VERSION} (KDE 4.2.91 (KDE 4.3 >= 20090609))")
+set (KDE_VERSION_STRING "${KDE_VERSION} (KDE 4.2.92 (KDE 4.3 >= 20090617))")
 
 set (KDE_DISTRIBUTION_TEXT "compiled sources" CACHE STRING "Indicate the distribution in bug reports" )
 
@@ -77,7 +77,7 @@ macro_log_feature(OPENGL_FOUND "OpenGL" "API for developing portable, interactiv
 
 set(SOPRANO_MIN_VERSION "2.1.68")
 macro_optional_find_package(Soprano)
-macro_log_feature(Soprano_FOUND "Soprano" "Soprano Libraries" "kdesupport" FALSE "${SOPRANO_MIN_VERSION}" "Provide metadata support (for semantic desktop).")
+macro_log_feature(Soprano_FOUND "Soprano" "Soprano Libraries" "http://soprano.sourceforge.net" FALSE "${SOPRANO_MIN_VERSION}" "Provide metadata support (for semantic desktop).")
 
 
 ################# Disallow in-source build #################
@@ -178,6 +178,7 @@ set(KDE4_KHTML_INCLUDES ${CMAKE_SOURCE_DIR}/khtml)
 # ACL stuff (used in kio/ and kioslaves/)
 macro_optional_find_package(ACL)
 macro_bool_to_01(ACL_FOUND HAVE_LIBACL HAVE_POSIX_ACL)
+macro_log_feature(ACL_FOUND "LibACL" "Access control list (ACL) support library" "ftp://oss.sgi.com/projects/xfs/cmd_tars" FALSE "" "STRONGLY RECOMMENDED: For manipulating access control lists.")
 configure_file(config-acl.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config-acl.h )
 
 include(ConfigureChecks.cmake)
@@ -196,7 +197,7 @@ check_library_exists(socket connect "" HAVE_SOCKET_LIBRARY)
 
 if(Soprano_FOUND)
   set(HAVE_NEPOMUK true)
-  macro_optional_add_subdirectory(nepomuk)
+  add_subdirectory(nepomuk)
 endif(Soprano_FOUND)
 
 ################# list the subdirectories #################
