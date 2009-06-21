@@ -1630,6 +1630,9 @@ void KHTMLPart::clear()
   if (d->editor_context.m_caretBlinkTimer >= 0)
       killTimer(d->editor_context.m_caretBlinkTimer);
   d->editor_context.reset();
+#ifndef QT_NO_CLIPBOARD
+  connect( qApp->clipboard(), SIGNAL( selectionChanged()), SLOT( slotClearSelection()));
+#endif
 
   d->m_jobPercent = 0;
 
@@ -4270,6 +4273,11 @@ bool KHTMLPart::processObjectRequest( khtml::ChildFrame *child, const KUrl &_url
       return true;
   }
 
+  // we also want to ignore any spurious requests due to closing when parser is being cleared. These should be
+  // ignored entirely  --- the tail end of ::clear will clean things up.
+  if (d->m_bClearing)
+      return false;
+
   if (child->m_bNotify)
   {
       child->m_bNotify = false;
@@ -6438,7 +6446,9 @@ void KHTMLPart::khtmlMouseReleaseEvent( khtml::MouseReleaseEvent *event )
     QString text = selectedText();
     text.replace(QChar(0xa0), ' ');
     if (!text.isEmpty()) {
+        disconnect( qApp->clipboard(), SIGNAL( selectionChanged()), this, SLOT( slotClearSelection()));
         qApp->clipboard()->setText(text,QClipboard::Selection);
+        connect( qApp->clipboard(), SIGNAL( selectionChanged()), SLOT( slotClearSelection()));
     }
 #endif
     //kDebug( 6000 ) << "selectedText = " << text;
