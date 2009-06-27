@@ -24,28 +24,12 @@
 #include "wmideviceinterface.h"
 #include "wmiquery.h"
 
-#ifdef _DEBUG
-# pragma comment(lib, "comsuppwd.lib")
-#else
-# pragma comment(lib, "comsuppw.lib")
-#endif
-# pragma comment(lib, "wbemuuid.lib")
-
-#define _WIN32_DCOM
-#include <iostream>
-#include <comdef.h>
-#include <Wbemidl.h>
-
-# pragma comment(lib, "wbemuuid.lib")
-
-
 using namespace Solid::Backends::Wmi;
 
 class Solid::Backends::Wmi::WmiManagerPrivate
 {
 public:
     WmiManagerPrivate()
-        : m_query()
     {
     }
 
@@ -55,10 +39,8 @@ public:
     
     WmiQuery::ItemList sendQuery( const QString &wql )
     {
-        return m_query.sendQuery( wql );
+		return WmiQuery::instance().sendQuery( wql );
     }
- 
-    WmiQuery m_query; 
 };
 
 

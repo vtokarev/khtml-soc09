@@ -403,6 +403,7 @@ void Extender::dropEvent(QGraphicsSceneDragDropEvent *event)
         if (mimeData) {
             mimeData->extenderItem()->setExtender(this, event->pos());
             QApplication::restoreOverrideCursor();
+            itemHoverLeaveEvent(0);
         }
     }
 }
@@ -411,7 +412,7 @@ void Extender::itemAddedEvent(ExtenderItem *item, const QPointF &pos)
 {
     if (pos == QPointF(-1, -1)) {
         //if just plain adding an item, add it at a sane position:
-	if (!item->group()) {
+        if (!item->group()) {
             if (appearance() == BottomUpStacked) {
                 //at the top
                 d->layout->insertItem(0, item);
@@ -540,6 +541,11 @@ ExtenderPrivate::~ExtenderPrivate()
 
 void ExtenderPrivate::addExtenderItem(ExtenderItem *item, const QPointF &pos)
 {
+    if (attachedExtenderItems.contains(item)) {
+        q->itemAddedEvent(item, pos);
+        return;
+    }
+
     attachedExtenderItems.append(item);
     q->itemHoverLeaveEvent(item);
     q->itemAddedEvent(item, pos);

@@ -17,10 +17,9 @@
 
 */
 
-#include <QtCore/QDebug>
-
 #include <solid/genericinterface.h>
 
+#include "wmiquery.h"
 #include "wmidevice.h"
 #include "wmideviceinterface.h"
 #include "wmigenericinterface.h"
@@ -40,22 +39,8 @@
 #include "wmiaudiointerface.h"
 #include "wmidvbinterface.h"
 #include "wmivideo.h"
-#include "wmiquery.h"
 
-
-#ifdef _DEBUG
-# pragma comment(lib, "comsuppwd.lib")
-#else
-# pragma comment(lib, "comsuppw.lib")
-#endif
-# pragma comment(lib, "wbemuuid.lib")
-
-#define _WIN32_DCOM
-#include <iostream>
-#include <comdef.h>
-#include <Wbemidl.h>
-
-# pragma comment(lib, "wbemuuid.lib")
+#include <QtCore/QDebug>
 
 using namespace Solid::Backends::Wmi;
 
@@ -90,7 +75,7 @@ public:
     WmiQuery::ItemList sendQuery() 
     {
         QString query("SELECT * FROM " + m_wmiTable + " WHERE " + m_wmiProperty + "='" + m_wmiValue + "'");
-        WmiQuery::ItemList list = m_query.sendQuery(query);
+		WmiQuery::ItemList list = WmiQuery::instance().sendQuery(query);
         return list;
     }
     
@@ -119,7 +104,7 @@ public:
             return false;
 
         QString query("SELECT * FROM " + wmiTable + " WHERE " + wmiProperty + "='" + wmiValue + "'");
-        WmiQuery::ItemList list = m_query.sendQuery(query);
+		WmiQuery::ItemList list = WmiQuery::instance().sendQuery(query);
         return list.size() > 0;
     }
 
@@ -256,7 +241,7 @@ public:
     {
         QStringList result;
         
-        WmiQuery::ItemList list = m_query.sendQuery( "select * from " + getWMITable(type) );
+		WmiQuery::ItemList list = WmiQuery::instance().sendQuery( "select * from " + getWMITable(type) );
         foreach(WmiQuery::Item *item, list) {
             QString propertyName = getPropertyNameForUDI(type);
             QString property = item->getProperty(propertyName);
@@ -267,15 +252,13 @@ public:
     }
     
     WmiDevice *parent;
-    static WmiQuery m_query;
+    static int m_instanceCount;
     QString m_udi;
     QString m_wmiTable;
     QString m_wmiProperty;
     QString m_wmiValue;
     QStringList interfaceList;
 };
-
-WmiQuery WmiDevicePrivate::m_query;
 
 Q_DECLARE_METATYPE(ChangeDescription)
 Q_DECLARE_METATYPE(QList<ChangeDescription>)

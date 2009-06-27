@@ -1784,10 +1784,9 @@ KPluginInfo::List Applet::listAppletInfo(const QString &category,
                 //this isn't actually implemented in any bindings yet but should be possible for
                 //anything but c++
             }
-            //TODO 4.3 be very strict about what we accept
-            //if (!(reqValue == "Optional" || reqValue == "Unused")) {
-            //for testing purposes I'm being lax right now
-            if (reqValue == "Required") {
+
+            if (!(reqValue == "Optional" || reqValue == "Unused")) {
+            //if (reqValue == "Required") {
                 it.remove();
             }
         }
@@ -2000,6 +1999,19 @@ QVariant Applet::itemChange(GraphicsItemChange change, const QVariant &value)
             old->copyTo(d->mainConfig);
             old->deleteGroup();
             delete old;
+        } else if (!d->isContainment) {
+            Plasma::PopupApplet *pa = qobject_cast<Plasma::PopupApplet *>(this);
+            if (!pa) {
+                break;
+            }
+            //reconnect of popupapplets with new containment geometryChanged
+            if (containment()) {
+                disconnect(containment(), SIGNAL(geometryChanged()), pa, SLOT(updateDialogPosition()));
+            }
+            Plasma::Containment *cont = dynamic_cast<Containment*>(value.value<QGraphicsItem *>());
+            if (cont) {
+                connect(cont, SIGNAL(geometryChanged()), pa, SLOT(updateDialogPosition()));
+            }
         }
     case ItemPositionChange:
         return (immutability() == Mutable || isContainment() || formFactor() == Horizontal || formFactor() == Vertical) ? value : pos();

@@ -9,10 +9,10 @@ include(CPack)
 ################# set KDE specific information #################
 
 set (KDE_VERSION_MAJOR 4)
-set (KDE_VERSION_MINOR 2)
-set (KDE_VERSION_RELEASE 92)
+set (KDE_VERSION_MINOR 3)
+set (KDE_VERSION_RELEASE 60)
 set (KDE_VERSION "${KDE_VERSION_MAJOR}.${KDE_VERSION_MINOR}.${KDE_VERSION_RELEASE}" )
-set (KDE_VERSION_STRING "${KDE_VERSION} (KDE 4.2.92 (KDE 4.3 >= 20090617))")
+set (KDE_VERSION_STRING "${KDE_VERSION} (KDE 4.3.60 (KDE 4.4 >= 20090624))")
 
 set (KDE_DISTRIBUTION_TEXT "compiled sources" CACHE STRING "Indicate the distribution in bug reports" )
 
@@ -49,10 +49,15 @@ endif(UNIX AND Q_WS_X11)
 
 #required features:
 # Perl is used e.g. in khtml, kjs, kjsembed and others
-find_package(Perl REQUIRED)
-find_package(ZLIB REQUIRED)
+find_package(Perl)
+macro_log_feature(PERL_FOUND "Perl" "Practical Extraction and Report Language" "http://www.perl.org" TRUE "" "Required by the KDE buildsystem.")
+
+find_package(ZLIB)
+macro_log_feature(ZLIB_FOUND "ZLib" "The Zlib compression library" "http://www.zlib.net" TRUE "" "Required by the core KDE libraries and some critical kioslaves.")
+
 set(STRIGI_MIN_VERSION 0.6.3)
-find_package(Strigi REQUIRED)
+find_package(Strigi)
+macro_log_feature(STRIGI_FOUND "Strigi" "A fast and small desktop searching program" "http://strigi.sourceforge.net" TRUE "${STRIGI_MIN_VERSION}" "Required by some critical kioslaves.")
 
 #optional features
 if(X11_FOUND)
@@ -77,7 +82,7 @@ macro_log_feature(OPENGL_FOUND "OpenGL" "API for developing portable, interactiv
 
 set(SOPRANO_MIN_VERSION "2.1.68")
 macro_optional_find_package(Soprano)
-macro_log_feature(Soprano_FOUND "Soprano" "Soprano Libraries" "http://soprano.sourceforge.net" FALSE "${SOPRANO_MIN_VERSION}" "Provide metadata support (for semantic desktop).")
+macro_log_feature(Soprano_FOUND "Soprano" "Semantic Desktop Storing" "http://soprano.sourceforge.net" FALSE "${SOPRANO_MIN_VERSION}" "Provide metadata support (for semantic desktop).")
 
 
 ################# Disallow in-source build #################

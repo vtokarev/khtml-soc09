@@ -91,10 +91,7 @@ QString Filter::buffer() const
 
 bool Filter::atEnd() const
 {
-    if ( m_currentPosition >= m_buffer.length() ) {
-        return true;
-    } else
-        return false;
+    return m_currentPosition >= m_buffer.length();
 }
 
 Word Filter::nextWord() const
@@ -240,7 +237,7 @@ QString Filter::context() const
     //we don't want the expression underneath casted to an unsigned int
     //which would cause it to always evaluate to false
     int signedPosition = m_currentPosition;
-    bool begin = ( (signedPosition - len/2)<=0 ) ? true : false;
+    bool begin = (signedPosition - len/2)<=0;
 
 
     QString buffer = m_buffer;
@@ -256,7 +253,7 @@ QString Filter::context() const
         context = QString( "...%1..." )
                   .arg( buffer.mid(  m_currentPosition - 20, len ) );
 
-    context = context.replace( '\n', ' ' );
+    context.replace( '\n', ' ' );
 
     return context;
 }
@@ -289,10 +286,7 @@ bool Filter::trySkipLinks() const
 
 bool Filter::ignore( const QString& word ) const
 {
-    if ( d->settings ) {
-        return d->settings->ignore( word );
-    }
-    return false;
+    return d->settings && d->settings->ignore( word );
 }
 
 QChar Filter::skipToLetter( int &fromPosition ) const

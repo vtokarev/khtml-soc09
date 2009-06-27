@@ -26,7 +26,7 @@
 #include <kconfig.h>
 #include <kdebug.h>
 #include <kconfiggroup.h>
-#include <kstandarddirs.h>
+#include <kstringhandler.h>
 
 #include <QtNetwork/QHostInfo>
 
@@ -1270,4 +1270,13 @@ void KConfigTest::testAnonymousConfig()
     QCOMPARE(general.readEntry("testKG"), QString()); // no kdeglobals merging
     general.writeEntry("Foo", "Bar");
     QCOMPARE(general.readEntry("Foo"), QString("Bar"));
+}
+
+void KConfigTest::testSpecialChars()
+{
+  QString test = "!TEST!";
+  KConfig config( "kconfigtest" );
+  KConfigGroup group = config.group( "specialchartest" );
+  group.writeEntry( "bar", KStringHandler::obscure( test ) );
+  QCOMPARE( KStringHandler::obscure( group.readEntry( "bar" ) ), test );
 }

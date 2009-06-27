@@ -17,12 +17,11 @@
 
 */
 
-#include "wmiquery.h"
+//#define _WIN32_DCOM
+//#include <comdef.h>
 
-#include <QtCore/QDebug>
-#include <QtCore/QVariant>
-#include <QtCore/QList>
-#include <QtCore/QStringList>
+#define INSIDE_WMIQUERY
+#include "wmiquery.h"
 
 #ifdef _DEBUG
 # pragma comment(lib, "comsuppwd.lib")
@@ -31,14 +30,27 @@
 #endif
 # pragma comment(lib, "wbemuuid.lib")
 
-#define _WIN32_DCOM
 #include <iostream>
-#include <comdef.h>
 #include <Wbemidl.h>
 
 # pragma comment(lib, "wbemuuid.lib")
 
+#include <QtCore/QDebug>
+#include <QtCore/QVariant>
+#include <QtCore/QList>
+#include <QtCore/QStringList>
+
+
 using namespace Solid::Backends::Wmi;
+
+/**
+ When a WmiQuery instance is created as a static global 
+ object a deadlock problem occurs in pLoc->ConnectServer. 
+ Please DO NOT USE the following or similar statement in 
+ the global space or a class.
+ 
+ static WmiQuery instance; 
+*/
 
 QString WmiQuery::Item::getProperty(const QString &property )
 {
@@ -146,6 +158,12 @@ WmiQuery::ItemList WmiQuery::sendQuery( const QString &wql )
 {
     ItemList retList;
     
+    if (!pSvc) 
+    {
+        m_failed = true;
+        return retList;
+    }
+
     HRESULT hres;
     hres = pSvc->ExecQuery( bstr_t("WQL"), bstr_t( qPrintable( wql ) ),
                 WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &pEnumerator);
@@ -176,4 +194,12 @@ WmiQuery::ItemList WmiQuery::sendQuery( const QString &wql )
 bool WmiQuery::isLegit() const
 {
     return !m_failed;
+}
+
+WmiQuery &WmiQuery::instance()
+{
+	static WmiQuery *query = 0;
+	if (!query)
+		query = new WmiQuery;
+	return *query;
 }
