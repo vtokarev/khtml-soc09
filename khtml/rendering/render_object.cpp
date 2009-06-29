@@ -1958,6 +1958,19 @@ void RenderObject::dump(QTextStream &ts, const QString &ind) const
     if (hasFirstLine()) { ts << " hasFirstLine"; }
     if (afterPageBreak()) { ts << " afterPageBreak"; }
 }
+
+void RenderObject::printLineBoxTree() const
+{
+    RenderObject* child = firstChild();
+    for (; child; child = child->nextSibling())
+        child->printLineBoxTree();
+    if (isRenderBlock()) {
+        const RenderBlock* block = static_cast<const RenderBlock*>(this);
+        RootInlineBox* rootBox = block->firstRootBox();
+        for (; rootBox; rootBox = rootBox->nextRootBox())
+            rootBox->printTree();
+    }
+}
 #endif
 
 bool RenderObject::shouldSelect() const

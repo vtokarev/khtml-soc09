@@ -1465,10 +1465,11 @@ void KHTMLPart::slotDebugRenderTree()
   if ( d->m_doc ) {
     d->m_doc->renderer()->printTree();
     // dump out the contents of the rendering & DOM trees
-//    QString dumps;
-//    QTextStream outputStream(dumps,QIODevice::WriteOnly);
-//    d->m_doc->renderer()->layer()->dump( outputStream );
-//    kDebug() << "dump output:" << "\n" + dumps;
+    QString dumps;
+    QTextStream outputStream(&dumps,QIODevice::WriteOnly);
+    d->m_doc->renderer()->layer()->dump( outputStream );
+    kDebug() << "dump output:" << "\n" + dumps;
+    d->m_doc->renderer()->printLineBoxTree();
   }
 #endif
 }
