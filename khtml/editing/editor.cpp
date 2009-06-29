@@ -412,6 +412,7 @@ void Editor::appliedEditing(EditCommand &cmd)
         d->registerUndo( cmd );
         d->m_lastEditCommand = cmd;
   }
+    m_part->editorContext()->m_selection.setNeedsLayout(true);
     m_part->selectionLayoutChanged();
   // ### only emit if caret pos changed
     m_part->emitCaretPositionChanged(cmd.endingSelection().caretPos());
@@ -427,6 +428,7 @@ void Editor::unappliedEditing(EditCommand &cmd)
 #ifdef APPLE_CHANGES
   KWQ(this)->respondToChangedContents();
 #else
+  m_part->editorContext()->m_selection.setNeedsLayout(true);
   m_part->selectionLayoutChanged();
   // ### only emit if caret pos changed
   m_part->emitCaretPositionChanged(cmd.startingSelection().caretPos());
