@@ -1006,4 +1006,15 @@ void Selection::debugPosition() const
     fprintf(stderr, "================================\n");
 }
 
+QDebug operator<<(QDebug stream, const Selection& selection)
+{
+    stream << "Selection["
+        << selection.base()
+        << selection.extent()
+        << selection.start()
+        << selection.end()
+        << selection.affinity() << "]";
+    return stream;
+}
+
 } // namespace DOM

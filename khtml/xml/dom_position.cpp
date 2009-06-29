@@ -897,17 +897,11 @@ bool Position::inLastEditableInContainingEditableBlock() const
     return true;
 }
 
-void Position::debugPosition(const char *msg) const
+QDebug operator<<(QDebug stream, const Position& position)
 {
-    if (isEmpty())
-        fprintf(stderr, "Position [%s]: empty\n", msg);
-    else
-#ifdef APPLE_CHANGES
-        fprintf(stderr, "Position [%s]: %s [%p] at %ld\n", msg, getTagName(node()->id()).string().latin1(), node(), offset());
-#else
-        fprintf(stderr, "Position [%s]: %s [%p] at %ld\n", msg,
-                qPrintable(getPrintableName(node()->id())), (void*) node(), offset());
-#endif
+    const NodeImpl* node = position.node();
+    stream << "Position(" << node << (node ? node->nodeName() : QString()) << ":" << position.offset() << ")";
+    return stream;
 }
 
 } // namespace DOM

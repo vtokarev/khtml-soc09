@@ -75,14 +75,12 @@ public:
     bool inLastEditableInRootEditableElement() const;
     bool inFirstEditableInContainingEditableBlock() const;
     bool inLastEditableInContainingEditableBlock() const;
-    
+
     Position &operator=(const Position &o);
-    
+
     friend bool operator==(const Position &a, const Position &b);
     friend bool operator!=(const Position &a, const Position &b);
-    
-    void debugPosition(const char *msg="") const;
-    
+
 private:
     NodeImpl *m_node;
     long m_offset;
@@ -97,6 +95,8 @@ inline bool operator!=(const Position &a, const Position &b)
 {
     return !(a == b);
 }
+
+QDebug operator<<(QDebug stream, const Position& position);
 
 } // namespace DOM
 
