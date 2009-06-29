@@ -38,10 +38,10 @@
 #include "rendering/render_replaced.h"
 #include "rendering/render_generated.h"
 #include "rendering/counter_tree.h"
+#include "rendering/render_position.h"
 
 #include "xml/dom_elementimpl.h"
 #include "xml/dom_docimpl.h"
-#include "xml/dom_position.h"
 #include "dom/dom_doc.h"
 #include "misc/htmlhashes.h"
 #include "misc/loader.h"
@@ -2407,9 +2407,9 @@ void RenderObject::arenaDelete(RenderArena *arena)
     arenaDelete(arena, dynamic_cast<void *>(this));
 }
 
-Position RenderObject::positionForCoordinates(int /*x*/, int /*y*/)
+RenderPosition RenderObject::positionForCoordinates(int /*x*/, int /*y*/)
 {
-    return Position(element(), caretMinOffset());
+    return RenderPosition(element(), caretMinOffset());
 }
 
 bool RenderObject::isPointInsideSelection(int x, int y, const Selection &sel) const

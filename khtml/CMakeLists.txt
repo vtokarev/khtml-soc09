@@ -345,6 +345,7 @@ set(khtmlrender_STAT_SRCS
   ${CMAKE_SOURCE_DIR}/khtml/rendering/enumerate.cpp
   ${CMAKE_SOURCE_DIR}/khtml/rendering/counter_tree.cpp
   ${CMAKE_SOURCE_DIR}/khtml/rendering/render_canvasimage.cpp
+  ${CMAKE_SOURCE_DIR}/khtml/rendering/render_position.cpp
 )
 
 # khtml/css/Makefile.am: khtmlcss

@@ -37,11 +37,13 @@
 #include "xml/dom_docimpl.h"
 #include "xml/dom_nodeimpl.h"
 #include "html/html_documentimpl.h"
+#include "rendering/render_position.h"
 
 #include "khtml_part.h"
 
 #include <qstring.h>
 
+// FIXME shouldn't use any rendereing related here except for RenderPosition
 using khtml::InlineBox;
 using khtml::InlineFlowBox;
 using khtml::InlineTextBox;
@@ -49,15 +51,9 @@ using khtml::RenderBlock;
 using khtml::RenderObject;
 using khtml::RenderText;
 using khtml::RootInlineBox;
+using khtml::RenderPosition;
 
 namespace DOM {
-
-static bool renderersOnDifferentLine(RenderObject *r1, long o1, RenderObject *r2, long o2)
-{
-    InlineBox *b1 = r1 ? r1->inlineBox(o1) : 0;
-    InlineBox *b2 = r2 ? r2->inlineBox(o2) : 0;
-    return (b1 && b2 && b1->root() != b2->root());
-}
 
 static NodeImpl *nextRenderedEditable(NodeImpl *node)
 {
@@ -87,7 +83,7 @@ static NodeImpl *previousRenderedEditable(NodeImpl *node)
     return 0;
 }
 
-static NodeImpl *rootNavigableElement(NodeImpl *node)
+/*static*/ NodeImpl *rootNavigableElement(NodeImpl *node)
 {
     DocumentImpl *doc = node->document();
     if (doc && doc->part()->isCaretMode()) {
@@ -100,7 +96,7 @@ static NodeImpl *rootNavigableElement(NodeImpl *node)
     return node->rootEditableElement();
 }
 
-inline static bool inSameRootNavigableElement(NodeImpl *n1, NodeImpl *n2)
+/*inline*/ /*static*/ bool inSameRootNavigableElement(NodeImpl *n1, NodeImpl *n2)
 {
     return n1 && n2 && rootNavigableElement(n1) == rootNavigableElement(n2);
 }
@@ -157,30 +153,12 @@ ElementImpl *Position::element() const
 
 long Position::renderedOffset() const
 {
-    if (!node()->isTextNode())
-        return offset();
-
-    if (!node()->renderer())
-        return offset();
-
-    int result = 0;
-    RenderText *textRenderer = static_cast<RenderText *>(node()->renderer());
-    for (InlineTextBox *box = textRenderer->firstTextBox(); box; box = box->nextTextBox()) {
-        int start = box->m_start;
-        int end = box->m_start + box->m_len;
-        if (offset() < start)
-            return result;
-        if (offset() <= end) {
-            result += offset() - start;
-            return result;
-        }
-        result += box->m_len;
-    }
-    return result;
+    return RenderPosition::fromDOMPosition(*this).renderedOffset();
 }
 
 Position Position::equivalentLeafPosition() const
 {
+    kDebug() << *this << endl;
     if (isEmpty())
         return Position();
 
@@ -204,6 +182,7 @@ Position Position::equivalentLeafPosition() const
 
 Position Position::previousRenderedEditablePosition() const
 {
+    kDebug() << *this << endl;
     if (isEmpty())
         return Position();
 
@@ -224,6 +203,7 @@ Position Position::previousRenderedEditablePosition() const
 
 Position Position::nextRenderedEditablePosition() const
 {
+    kDebug() << *this << endl;
     if (isEmpty())
         return Position();
 
@@ -244,53 +224,50 @@ Position Position::nextRenderedEditablePosition() const
 
 Position Position::previousCharacterPosition() const
 {
+    kDebug() << *this << endl;
     if (isEmpty())
         return Position();
 
     NodeImpl *fromRootNavigableElement = rootNavigableElement(node());
-//     kDebug(6200) << "prevCharPos: cur(" << node() << "," << offset() << ") fromRootNav " << fromRootNavigableElement << endl;
+    kDebug() << "RootElement" << fromRootNavigableElement << endl;
     PositionIterator it(*this);
 
-    bool atStartOfLine = isFirstRenderedPositionOnLine();
+    RenderPosition originalRPosition = RenderPosition::fromDOMPosition(*this);
 
     while (!it.atStart()) {
         Position pos = it.previous();
+        kDebug() << "iterate" << pos << endl;
 
-        if (rootNavigableElement(pos.node()) != fromRootNavigableElement)
+        if (rootNavigableElement(pos.node()) != fromRootNavigableElement) {
+            kDebug() << "different root" << rootNavigableElement(pos.node()) << endl;
             return *this;
-
-        if (atStartOfLine) {
-            if (pos.inRenderedContent())
-                return pos;
         }
-        else if (rendersInDifferentPosition(pos))
+        RenderPosition currentRPosition = RenderPosition::fromDOMPosition(pos);
+        if (RenderPosition::rendersInDifferentPosition(originalRPosition, currentRPosition))
             return pos;
     }
-
+    kDebug() << "no previous position" << endl;
     return *this;
 }
 
 Position Position::nextCharacterPosition() const
 {
+    kDebug() << *this << endl;
     if (isEmpty())
         return Position();
 
     NodeImpl *fromRootNavigableElement = rootNavigableElement(node());
     PositionIterator it(*this);
 
-    bool atEndOfLine = isLastRenderedPositionOnLine();
+    RenderPosition originalRPosition = RenderPosition::fromDOMPosition(*this);
 
     while (!it.atEnd()) {
         Position pos = it.next();
 
         if (rootNavigableElement(pos.node()) != fromRootNavigableElement)
             return *this;
-
-        if (atEndOfLine) {
-            if (pos.inRenderedContent())
-                return pos;
-        }
-        else if (rendersInDifferentPosition(pos))
+        RenderPosition currentRPosition = RenderPosition::fromDOMPosition(pos);
+        if (RenderPosition::rendersInDifferentPosition(originalRPosition, currentRPosition))
             return pos;
     }
 
@@ -305,6 +282,7 @@ Position Position::previousWordPosition() const
     Position pos = *this;
     for (PositionIterator it(*this); !it.atStart(); it.previous()) {
         if (it.current().node()->nodeType() == Node::TEXT_NODE || it.current().node()->nodeType() == Node::CDATA_SECTION_NODE) {
+            // use RenderPosition here
             DOMString t = it.current().node()->nodeValue();
             QChar *chars = t.unicode();
             uint len = t.length();
@@ -331,6 +309,7 @@ Position Position::nextWordPosition() const
     Position pos = *this;
     for (PositionIterator it(*this); !it.atEnd(); it.next()) {
         if (it.current().node()->nodeType() == Node::TEXT_NODE || it.current().node()->nodeType() == Node::CDATA_SECTION_NODE) {
+            // use RenderPosition here
             DOMString t = it.current().node()->nodeValue();
             QChar *chars = t.unicode();
             uint len = t.length();
@@ -351,105 +330,17 @@ Position Position::nextWordPosition() const
 
 Position Position::previousLinePosition(int x) const
 {
-    if (!node())
-        return Position();
-
-    if (!node()->renderer())
-        return *this;
-
-    InlineBox *box = node()->renderer()->inlineBox(offset());
-    if (!box)
-        return *this;
-
-    RenderBlock *containingBlock = 0;
-    RootInlineBox *root = box->root()->prevRootBox();
-    if (root) {
-        containingBlock = node()->renderer()->containingBlock();
-    }
-    else {
-        // This containing editable block does not have a previous line.
-        // Need to move back to previous containing editable block in this root editable
-        // block and find the last root line box in that block.
-        NodeImpl *startBlock = node()->enclosingBlockFlowElement();
-        NodeImpl *n = node()->previousEditable();
-        while (n && startBlock == n->enclosingBlockFlowElement())
-            n = n->previousEditable();
-        if (n) {
-            while (n && !Position(n, n->caretMaxOffset()).inRenderedContent())
-                n = n->previousEditable();
-            if (n && inSameRootNavigableElement(n, node())) {
-                assert(n->renderer());
-                box = n->renderer()->inlineBox(n->caretMaxOffset());
-                assert(box);
-                // previous root line box found
-                root = box->root();
-                containingBlock = n->renderer()->containingBlock();
-            }
-        }
-    }
-
-    if (root) {
-        int absx, absy;
-        containingBlock->absolutePosition(absx, absy);
-        RenderObject *renderer = root->closestLeafChildForXPos(x, absx)->object();
-        return renderer->positionForCoordinates(x, absy + root->topOverflow());
-    }
-
-    return *this;
+    return RenderPosition::fromDOMPosition(*this).previousLinePosition(x).position();
 }
 
 Position Position::nextLinePosition(int x) const
 {
-    if (!node())
-        return Position();
-
-    if (!node()->renderer())
-        return *this;
-
-    InlineBox *box = node()->renderer()->inlineBox(offset());
-    if (!box)
-        return *this;
-
-    RenderBlock *containingBlock = 0;
-    RootInlineBox *root = box->root()->nextRootBox();
-    if (root) {
-        containingBlock = node()->renderer()->containingBlock();
-    }
-    else {
-        // This containing editable block does not have a next line.
-        // Need to move forward to next containing editable block in this root editable
-        // block and find the first root line box in that block.
-        NodeImpl *startBlock = node()->enclosingBlockFlowElement();
-        NodeImpl *n = node()->nextEditable();
-        while (n && startBlock == n->enclosingBlockFlowElement())
-            n = n->nextEditable();
-        if (n) {
-            while (n && !Position(n, n->caretMinOffset()).inRenderedContent())
-                n = n->nextEditable();
-            if (n && inSameRootNavigableElement(n, node())) {
-                assert(n->renderer());
-                box = n->renderer()->inlineBox(n->caretMinOffset());
-                kDebug(6200) << "n: " << n->nodeName() << endl;
-                assert(box);
-                // previous root line box found
-                root = box->root();
-                containingBlock = n->renderer()->containingBlock();
-            }
-        }
-    }
-
-    if (root) {
-        int absx, absy;
-        containingBlock->absolutePosition(absx, absy);
-        RenderObject *renderer = root->closestLeafChildForXPos(x, absx)->object();
-        return renderer->positionForCoordinates(x, absy + root->topOverflow());
-    }
-
-    return *this;
+    return RenderPosition::fromDOMPosition(*this).nextLinePosition(x).position();
 }
 
 Position Position::equivalentUpstreamPosition() const
 {
+    kDebug() << *this << endl;
     if (!node())
         return Position();
 
@@ -484,6 +375,8 @@ Position Position::equivalentUpstreamPosition() const
             uint textOffset = it.current().offset();
 
             RenderText *textRenderer = static_cast<RenderText *>(renderer);
+            textOffset = textRenderer->convertToRenderedPosition(textOffset);
+            // textRenderer->firstTextBox()->parent()->printTree();
             for (InlineTextBox *box = textRenderer->firstTextBox(); box; box = box->nextTextBox()) {
                 if (textOffset > box->start() && textOffset <= box->start() + box->len())
                     return it.current();
@@ -496,6 +389,7 @@ Position Position::equivalentUpstreamPosition() const
 
 Position Position::equivalentDownstreamPosition() const
 {
+    kDebug() << *this << endl;
     if (!node())
         return Position();
 
@@ -530,6 +424,8 @@ Position Position::equivalentDownstreamPosition() const
             uint textOffset = it.current().offset();
 
             RenderText *textRenderer = static_cast<RenderText *>(renderer);
+            textOffset = textRenderer->convertToRenderedPosition(textOffset);
+            // textRenderer->firstTextBox()->parent()->printTree();
             for (InlineTextBox *box = textRenderer->firstTextBox(); box; box = box->nextTextBox()) {
                 if (textOffset >= box->start() && textOffset <= box->end())
                     return it.current();
@@ -586,65 +482,12 @@ bool Position::atStartOfRootEditableElement() const
 
 bool Position::inRenderedContent() const
 {
-    if (isEmpty())
-        return false;
-
-    RenderObject *renderer = node()->renderer();
-    if (!renderer || !(node()->document()->part()->isCaretMode() || renderer->isEditable()))
-        return false;
-
-    if (renderer->style()->visibility() != khtml::VISIBLE)
-        return false;
-
-    if (renderer->isBR() && static_cast<RenderText *>(renderer)->firstTextBox()) {
-        return offset() == 0;
-    }
-    else if (renderer->isText()) {
-        RenderText *textRenderer = static_cast<RenderText *>(renderer);
-        for (InlineTextBox *box = textRenderer->firstTextBox(); box; box = box->nextTextBox()) {
-            if (offset() >= box->m_start && offset() <= box->m_start + box->m_len) {
-                return true;
-            }
-            else if (offset() < box->m_start) {
-                // The offset we're looking for is before this node
-                // this means the offset must be in content that is
-                // not rendered. Return false.
-                return false;
-            }
-        }
-    }
-    else if (offset() >= renderer->caretMinOffset() && offset() <= renderer->caretMaxOffset()) {
-        // don't return containing editable blocks unless they are empty
-        if (node()->enclosingBlockFlowElement() == node() && node()->firstChild())
-            return false;
-        return true;
-    }
-
-    return false;
+    return RenderPosition::fromDOMPosition(*this).inRenderedContent();
 }
 
 bool Position::inRenderedText() const
 {
-    if (!node()->isTextNode())
-        return false;
-
-    RenderObject *renderer = node()->renderer();
-    if (!renderer)
-        return false;
-
-    RenderText *textRenderer = static_cast<RenderText *>(renderer);
-    for (InlineTextBox *box = textRenderer->firstTextBox(); box; box = box->nextTextBox()) {
-        if (offset() < box->m_start) {
-            // The offset we're looking for is before this node
-            // this means the offset must be in content that is
-            // not rendered. Return false.
-            return false;
-        }
-        if (offset() >= box->m_start && offset() <= box->m_start + box->m_len)
-            return true;
-    }
-
-    return false;
+    return RenderPosition::fromDOMPosition(*this).inRenderedContent() && node() && node()->renderer() && node()->renderer()->isText();
 }
 
 bool Position::rendersOnSameLine(const Position &pos) const
@@ -652,29 +495,21 @@ bool Position::rendersOnSameLine(const Position &pos) const
     if (isEmpty() || pos.isEmpty())
         return false;
 
-    if (node() == pos.node() && offset() == pos.offset())
+    if (*this == pos)
         return true;
 
     if (node()->enclosingBlockFlowElement() != pos.node()->enclosingBlockFlowElement())
         return false;
 
-    RenderObject *renderer = node()->renderer();
-    if (!renderer)
-        return false;
-
-    RenderObject *posRenderer = pos.node()->renderer();
-    if (!posRenderer)
-        return false;
-
-    if (renderer->style()->visibility() != khtml::VISIBLE ||
-        posRenderer->style()->visibility() != khtml::VISIBLE)
-        return false;
-
-    return renderersOnDifferentLine(renderer, offset(), posRenderer, pos.offset());
+    RenderPosition self = RenderPosition::fromDOMPosition(*this);
+    RenderPosition other = RenderPosition::fromDOMPosition(pos);
+    return RenderPosition::rendersOnSameLine(self, other);
 }
 
 bool Position::rendersInDifferentPosition(const Position &pos) const
 {
+    return RenderPosition::rendersInDifferentPosition(RenderPosition::fromDOMPosition(*this), RenderPosition::fromDOMPosition(pos));
+    /*kDebug() << *this << pos << endl;
     if (isEmpty() || pos.isEmpty())
         return false;
 
@@ -754,17 +589,20 @@ bool Position::rendersInDifferentPosition(const Position &pos) const
         return false;
     }
 
-    return true;
+    return true;*/
 }
 
 bool Position::isFirstRenderedPositionOnLine() const
 {
+    // return RenderPosition::fromDOMPosition(*this).isFirst*/
+    kDebug() << *this << endl;
     if (isEmpty())
         return false;
 
     RenderObject *renderer = node()->renderer();
     if (!renderer)
         return false;
+    kDebug() << "Renderer" << renderer << renderer->renderName() << endl;
 
     if (renderer->style()->visibility() != khtml::VISIBLE)
         return false;
@@ -773,8 +611,10 @@ bool Position::isFirstRenderedPositionOnLine() const
     PositionIterator it(pos);
     while (!it.atStart()) {
         it.previous();
+        kDebug() << "To previous" << it.current() << endl;
         if (it.current().inRenderedContent())
-            return renderersOnDifferentLine(renderer, offset(), it.current().node()->renderer(), it.current().offset());
+            return !rendersOnSameLine(it.current());
+            // return renderersOnDifferentLine(renderer, offset(), it.current().node()->renderer(), it.current().offset());
     }
 
     return true;
@@ -800,7 +640,8 @@ bool Position::isLastRenderedPositionOnLine() const
     while (!it.atEnd()) {
         it.next();
         if (it.current().inRenderedContent())
-            return renderersOnDifferentLine(renderer, offset(), it.current().node()->renderer(), it.current().offset());
+            return !rendersOnSameLine(it.current());
+            // return renderersOnDifferentLine(renderer, offset(), it.current().node()->renderer(), it.current().offset());
     }
 
     return true;
@@ -863,7 +704,7 @@ bool Position::inLastEditableInRootEditableElement() const
 
 bool Position::inFirstEditableInContainingEditableBlock() const
 {
-    if (isEmpty() || !inRenderedContent())
+    if (isEmpty() || !RenderPosition::inRenderedContent(*this))
         return false;
 
     NodeImpl *block = node()->enclosingBlockFlowElement();
@@ -871,7 +712,7 @@ bool Position::inFirstEditableInContainingEditableBlock() const
     PositionIterator it(*this);
     while (!it.atStart()) {
         it.previous();
-        if (!it.current().inRenderedContent())
+        if (!RenderPosition::inRenderedContent(it.current()))
             continue;
         return block != it.current().node()->enclosingBlockFlowElement();
     }
@@ -881,7 +722,7 @@ bool Position::inFirstEditableInContainingEditableBlock() const
 
 bool Position::inLastEditableInContainingEditableBlock() const
 {
-    if (isEmpty() || !inRenderedContent())
+    if (isEmpty() || !RenderPosition::inRenderedContent(*this))
         return false;
 
     NodeImpl *block = node()->enclosingBlockFlowElement();
@@ -889,7 +730,7 @@ bool Position::inLastEditableInContainingEditableBlock() const
     PositionIterator it(*this);
     while (!it.atEnd()) {
         it.next();
-        if (!it.current().inRenderedContent())
+        if (!RenderPosition::inRenderedContent(it.current()))
             continue;
         return block != it.current().node()->enclosingBlockFlowElement();
     }

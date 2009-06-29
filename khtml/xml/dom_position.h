@@ -26,10 +26,15 @@
 #ifndef __dom_position_h__
 #define __dom_position_h__
 
+#include <QDebug>
+
 namespace DOM {
 
 class ElementImpl;
 class NodeImpl;
+
+NodeImpl *rootNavigableElement(NodeImpl *node);
+bool inSameRootNavigableElement(NodeImpl *n1, NodeImpl *n2);
 
 class Position
 {

@@ -1580,7 +1580,9 @@ void DocumentImpl::updateSelection()
     else {
         RenderObject *startRenderer = s.start().node() ? s.start().node()->renderer() : 0;
         RenderObject *endRenderer = s.end().node() ? s.end().node()->renderer() : 0;
-        static_cast<RenderCanvas*>(m_render)->setSelection(startRenderer, s.start().offset(), endRenderer, s.end().offset());
+        RenderPosition renderedStart = RenderPosition::fromDOMPosition(s.start());
+        RenderPosition renderedEnd   = RenderPosition::fromDOMPosition(s.end());
+        static_cast<RenderCanvas*>(m_render)->setSelection(startRenderer, renderedStart.renderedOffset(), endRenderer, renderedEnd.renderedOffset());
     }
 }
 

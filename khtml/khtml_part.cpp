@@ -6043,7 +6043,7 @@ void KHTMLPart::handleMousePressEventDoubleClick(khtml::MouseDoubleClickEvent *e
 
     if (mouse->button() == Qt::LeftButton && !innerNode.isNull() && innerNode.handle()->renderer() &&
         innerNode.handle()->renderer()->shouldSelect()) {
-        Position pos(innerNode.handle()->positionForCoordinates(event->x(), event->y()));
+        Position pos(innerNode.handle()->positionForCoordinates(event->x(), event->y()).position());
         if (pos.node() && (pos.node()->nodeType() == Node::TEXT_NODE || pos.node()->nodeType() == Node::CDATA_SECTION_NODE)) {
             selection.moveTo(pos);
             selection.expandUsingGranularity(Selection::WORD);
@@ -6067,7 +6067,7 @@ void KHTMLPart::handleMousePressEventTripleClick(khtml::MouseDoubleClickEvent *e
 
     if (mouse->button() == Qt::LeftButton && !innerNode.isNull() && innerNode.handle()->renderer() &&
         innerNode.handle()->renderer()->shouldSelect()) {
-        Position pos(innerNode.handle()->positionForCoordinates(event->x(), event->y()));
+        Position pos(innerNode.handle()->positionForCoordinates(event->x(), event->y()).position());
         if (pos.node() && (pos.node()->nodeType() == Node::TEXT_NODE || pos.node()->nodeType() == Node::CDATA_SECTION_NODE)) {
             selection.moveTo(pos);
             selection.expandUsingGranularity(Selection::LINE);
@@ -6099,9 +6099,10 @@ void KHTMLPart::handleMousePressEventSingleClick(khtml::MousePressEvent *event)
             if (!extendSelection && isPointInsideSelection(event->x(), event->y())) {
                 return;
             }
-            Position pos(innerNode.handle()->positionForCoordinates(event->x(), event->y()));
+            Position pos(innerNode.handle()->positionForCoordinates(event->x(), event->y()).position());
             if (pos.isEmpty())
                 pos = Position(innerNode.handle(), innerNode.handle()->caretMinOffset());
+            kDebug() << event->x() << event->y() << pos << endl;
 
             sel = caret();
             if (extendSelection && sel.notEmpty()) {
@@ -6203,7 +6204,7 @@ bool KHTMLPart::isExtendingSelection() const
 void KHTMLPart::extendSelectionTo(int x, int y, const DOM::Node &innerNode)
 {
     // handle making selection
-    Position pos(innerNode.handle()->positionForCoordinates(x, y));
+    Position pos(innerNode.handle()->positionForCoordinates(x, y).position());
 
     // Don't modify the selection if we're not on a node.
     if (pos.isEmpty())
@@ -6438,7 +6439,7 @@ void KHTMLPart::khtmlMouseReleaseEvent( khtml::MouseReleaseEvent *event )
 #ifdef APPLE_CHANGES
       if (d->editor_context.m_selection.base().node()->isContentEditable())
 #endif
-        selection.moveTo(d->editor_context.m_selection.base().node()->positionForCoordinates(event->x(), event->y()));
+        selection.moveTo(d->editor_context.m_selection.base().node()->positionForCoordinates(event->x(), event->y()).position());
       setCaret(selection);
     }
     // get selected text and paste to the clipboard

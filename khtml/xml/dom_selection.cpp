@@ -53,6 +53,7 @@ using khtml::findWordBoundary;
 using khtml::InlineTextBox;
 using khtml::RenderObject;
 using khtml::RenderText;
+using khtml::RenderPosition;
 
 namespace DOM {
 
@@ -337,7 +338,7 @@ int Selection::xPosForVerticalArrowNavigation(EPositionType type, bool recalc) c
     {
         int y, w, h;
         if (pos.node()->renderer())
-            pos.node()->renderer()->caretPos(pos.offset(), 0, x, y, w, h);
+            pos.node()->renderer()->caretPos(pos.renderedOffset(), 0, x, y, w, h);
         part->d->editor_context.m_xPosForVerticalArrowNavigation = x;
     }
     else {
@@ -472,7 +473,10 @@ void Selection::layoutCaret()
         // EDIT FIXME: Enhance call to pass along selection
         // upstream/downstream affinity to get the right position.
         int w;
-        caretPos().node()->renderer()->caretPos(caretPos().offset(), true, m_caretX, m_caretY, w, m_caretSize);
+        int offset = RenderPosition::fromDOMPosition(caretPos()).renderedOffset();
+        kDebug() << "[before caretPos()]" << m_caretX << endl;
+        caretPos().node()->renderer()->caretPos(offset, true, m_caretX, m_caretY, w, m_caretSize);
+        kDebug() << "[after caretPos()]" << m_caretX << endl;
     }
 
     m_needsCaretLayout = false;
@@ -810,8 +814,11 @@ static bool startAndEndLineNodesIncludingNode(NodeImpl *node, int offset, Select
     if (node && node->renderer() && (node->nodeType() == Node::TEXT_NODE || node->nodeType() == Node::CDATA_SECTION_NODE)) {
         int pos;
         int selectionPointY;
-        RenderText *renderer = static_cast<RenderText *>(node->renderer());
-        const InlineTextBox * run = renderer->findInlineTextBox( offset, pos );
+        RenderPosition rp = RenderPosition::fromDOMPosition(Position(node, offset));
+        pos = rp.renderedOffset();
+        // RenderText *renderer = static_cast<RenderText *>(node->renderer());
+        // const InlineTextBox * run = renderer->findInlineTextBox( offset, pos );
+        const InlineTextBox* run = static_cast<InlineTextBox*>(node->renderer()->inlineBox(pos));
         DOMString t = node->nodeValue();
 
         if (!run)
@@ -820,7 +827,7 @@ static bool startAndEndLineNodesIncludingNode(NodeImpl *node, int offset, Select
         selectionPointY = run->m_y;
 
         // Go up to first non-inline element.
-        khtml::RenderObject *renderNode = renderer;
+        khtml::RenderObject *renderNode = node->renderer();
         while (renderNode && renderNode->isInline())
             renderNode = renderNode->parent();
 
@@ -842,7 +849,7 @@ static bool startAndEndLineNodesIncludingNode(NodeImpl *node, int offset, Select
         if (!lastRunAt (renderNode, selectionPointY, endNode, endOffset))
             return false;
 
-        selection.moveTo(Position(startNode, startOffset), Position(endNode, endOffset));
+        selection.moveTo(RenderPosition(startNode, startOffset).position(), RenderPosition(endNode, endOffset).position());
 
         return true;
     }
