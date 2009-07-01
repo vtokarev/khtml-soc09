@@ -106,3 +106,13 @@ void KStringHandlerTest::naturalCompare()
     QCOMPARE(KStringHandler::naturalCompare("queen__somebody_to_love_live.mp3", "queens_of_the_stone_age__no_one_knows.mp3", Qt::CaseSensitive), -1);
 }
 
+void KStringHandlerTest::obscure()
+{
+  // See bug 167900, obscure() produced chars that could not properly be converted to and from
+  // UTF8. The result was that storing passwords with '!' in them did not work.
+  QString test = "!TEST!";
+  QString obscured = KStringHandler::obscure( test );
+  QByteArray obscuredBytes = obscured.toUtf8();
+  QCOMPARE( KStringHandler::obscure( QString::fromUtf8( obscuredBytes ) ), test );
+}
+

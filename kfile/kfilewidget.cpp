@@ -1712,7 +1712,7 @@ void KFileWidget::showEvent(QShowEvent* event)
     if ( !d->hasView ) { // delayed view-creation
         Q_ASSERT( d );
         Q_ASSERT( d->ops );
-        d->ops->setView( d->ops->viewKind() );
+        d->ops->setView( KFile::Default );
         d->ops->view()->setSizePolicy( QSizePolicy( QSizePolicy::Maximum, QSizePolicy::Maximum ) );
         d->hasView = true;
 
@@ -2645,6 +2645,11 @@ KDirOperator* KFileWidget::dirOperator()
     return d->ops;
 }
 
+void KFileWidget::readConfig( KConfigGroup& group )
+{
+    d->readConfig(group);
+}
+
 QString KFileWidgetPrivate::locationEditCurrentText() const
 {
     return QDir::fromNativeSeparators(locationEdit->currentText().trimmed());
@@ -2677,5 +2682,6 @@ void KFileWidgetPrivate::setInlinePreviewShown(bool show)
 {
     ops->setInlinePreviewShown(show);
 }
+
 
 #include "kfilewidget.moc"
