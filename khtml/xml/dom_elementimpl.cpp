@@ -1684,7 +1684,7 @@ void NamedAttrMapImpl::setValueWithoutElementUpdate(NodeImpl::Id id, DOMStringIm
     // FIXME properly fix case value == 0
     int index = find(id, emptyPrefixName, true);
     if (index >= 0) {
-        m_attrs[index].rewriteValue(value ? value : new DOMStringImpl(""));
+        m_attrs[index].rewriteValue(value ? value : DOMStringImpl::empty());
         return;
     }
 
