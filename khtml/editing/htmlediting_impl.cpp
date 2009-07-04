@@ -612,6 +612,55 @@ int ApplyStyleCommandImpl::commandID() const
     return ApplyStyleCommandID;
 }
 
+static bool isBlockLevelStyle(const CSSStyleDeclarationImpl* style)
+{
+    QListIterator<CSSProperty*> it(*(style->values()));
+    while (it.hasNext()) {
+        CSSProperty *property = it.next();
+        switch (property->id()) {
+            case CSS_PROP_TEXT_ALIGN:
+                return true;
+                /*case CSS_PROP_FONT_WEIGHT:
+                    if (strcasecmp(property->value()->cssText(), "bold") == 0)
+                        styleChange.applyBold = true;
+                    else
+                        styleChange.cssStyle += property->cssText();
+                    break;
+                case CSS_PROP_FONT_STYLE: {
+                        DOMString cssText(property->value()->cssText());
+                        if (strcasecmp(cssText, "italic") == 0 || strcasecmp(cssText, "oblique") == 0)
+                            styleChange.applyItalic = true;
+                        else
+                            styleChange.cssStyle += property->cssText();
+                    }
+                    break;
+                default:
+                    styleChange.cssStyle += property->cssText();
+                    break;*/
+        }
+    }
+    return false;
+}
+
+static void applyStyleChangeOnTheNode(ElementImpl* element, CSSStyleDeclarationImpl* style)
+{
+    CSSStyleDeclarationImpl *computedStyle = element->document()->defaultView()->getComputedStyle(element, 0);
+    assert(computedStyle);
+
+    QListIterator<CSSProperty*> it(*(style->values()));
+    while ( it.hasNext() ) {
+        CSSProperty *property = it.next();
+        CSSValueImpl *computedValue = computedStyle->getPropertyCSSValue(property->id());
+        DOMString newValue = property->value()->cssText();
+        kDebug() << "[new value]:" << property->cssText() << endl;
+        kDebug() << "[computedValue]:" << computedValue->cssText() << endl;
+        if (strcasecmp(computedValue->cssText(), newValue)) {
+            // we can do better and avoid parsing property
+            element->getInlineStyleDecls()->setProperty(property->id(), newValue);
+        }
+    }
+}
+
 void ApplyStyleCommandImpl::doApply()
 {
     if (endingSelection().state() != Selection::RANGE)
@@ -620,6 +669,31 @@ void ApplyStyleCommandImpl::doApply()
     // adjust to the positions we want to use for applying style
     Position start(endingSelection().start().equivalentDownstreamPosition().equivalentRangeCompliantPosition());
     Position end(endingSelection().end().equivalentUpstreamPosition());
+    kDebug() << "[APPLY STYLE]" << start << end << endl;
+
+    if (isBlockLevelStyle(m_style)) {
+        kDebug() << "[APPLY BLOCK LEVEL STYLE]" << endl;
+        ElementImpl *startBlock = start.node()->enclosingBlockFlowElement();
+        ElementImpl *endBlock   = end.node()->enclosingBlockFlowElement();
+        kDebug() << startBlock << startBlock->nodeName() << endl;
+        if (startBlock == endBlock && startBlock == start.node()->rootEditableElement()) {
+            ElementImpl* block = document()->createHTMLElement("DIV");
+            kDebug() << "[Create DIV with Style:]" << m_style->cssText() << endl;
+            block->setAttribute(ATTR_STYLE, m_style->cssText());
+            for (NodeImpl* node = startBlock->firstChild(); node; node = startBlock->firstChild()) {
+                kDebug() << "[reparent node]" << node << node->nodeName() << endl;
+                removeNode(node);
+                appendNode(block, node);
+            }
+            appendNode(startBlock, block);
+        } else if (startBlock == endBlock) {
+            // StyleChange styleChange = computeStyleChange(Position(startBlock, 0), m_style);
+            // kDebug() << "[Modify block with style change:]" << styleChange.cssStyle << endl;
+            applyStyleChangeOnTheNode(startBlock, m_style);
+            // startBlock->setAttribute(ATTR_STYLE, styleChange.cssStyle);
+        }
+        return;
+    }
 
     // remove style from the selection
     removeStyle(start, end);
