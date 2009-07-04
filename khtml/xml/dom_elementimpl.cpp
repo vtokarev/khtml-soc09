@@ -327,8 +327,7 @@ void AttributeImpl::rewriteValue( const DOMString& newValue )
 
         m_data.value->deref();
         m_data.value = value;
-        if (m_data.value)
-            m_data.value->ref();
+        m_data.value->ref();
     } else {
 	m_data.attr->rewriteValue(newValue);
     }
@@ -1685,7 +1684,7 @@ void NamedAttrMapImpl::setValueWithoutElementUpdate(NodeImpl::Id id, DOMStringIm
     // FIXME properly fix case value == 0
     int index = find(id, emptyPrefixName, true);
     if (index >= 0) {
-        m_attrs[index].rewriteValue(value);
+        m_attrs[index].rewriteValue(value ? value : new DOMStringImpl(""));
         return;
     }
 
