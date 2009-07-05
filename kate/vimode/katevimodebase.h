@@ -1,5 +1,6 @@
 /* This file is part of the KDE libraries
- * Copyright (C) 2008 Erlend Hamberg <ehamberg@gmail.com>
+ * Copyright (C) 2008 - 2009 Erlend Hamberg <ehamberg@gmail.com>
+ * Copyright (C) 2009 Paul Gideon Dann <pdgiddie@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,6 +24,7 @@
 #include <ktexteditor/cursor.h>
 #include "kateview.h"
 #include "katevirange.h"
+#include "kateviewinternal.h"
 
 #include <QList>
 
@@ -31,7 +33,6 @@ class QString;
 class QRegExp;
 class QTimer;
 class KateDocument;
-class KateViewInternal;
 class KateViVisualMode;
 class KateViNormalMode;
 class KateViInputModeManager;
@@ -75,12 +76,16 @@ class KateViModeBase : public QObject
     KateViRange goLineDown();
     KateViRange goLineUpDown( int lines);
 
+    unsigned int linesDisplayed() { return m_viewInternal->linesDisplayed(); }
+    void scrollViewLines( int l ) { m_viewInternal->scrollViewLines( l ); }
+
     unsigned int getCount() const { return ( m_count > 0 ) ? m_count : 1; }
 
     bool startNormalMode();
     bool startInsertMode();
     bool startVisualMode();
     bool startVisualLineMode();
+    bool startVisualBlockMode();
 
     void error( const QString &errorMsg ) const;
     void message( const QString &msg ) const;

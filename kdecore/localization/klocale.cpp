@@ -42,6 +42,7 @@
 #include <QtCore/QRegExp>
 #include <QtCore/QLocale>
 #include <QtCore/QHash>
+#include <QtCore/QMutexLocker>
 
 #include "kcatalog_p.h"
 #include "kglobal.h"
@@ -67,6 +68,8 @@ class KLocaleStaticData
 
     KLocaleStaticData ();
 
+    QMutex mutex;
+
     QString maincatalog;
 
     // FIXME: Temporary until full language-sensitivity implemented.
@@ -74,6 +77,7 @@ class KLocaleStaticData
 };
 
 KLocaleStaticData::KLocaleStaticData ()
+: mutex(QMutex::Recursive)
 {
     // Languages using non-Western Arabic digit sets.
     // FIXME: Temporary until full language-sensitivity implemented.
@@ -261,6 +265,12 @@ public:
 #ifdef Q_WS_WIN
   char win32SystemEncoding[3+7]; //"cp " + lang ID
 #endif
+
+  // Performance stuff.
+  enum ByteSizeFmt {
+    TiB, GiB, MiB, KiB, B
+  };
+  QList<QString> byteSizeFmt;
 };
 
 KLocalePrivate::KLocalePrivate(const QString& catalog, KConfig *config, const QString &language_, const QString &country_)
@@ -1292,14 +1302,6 @@ QString KLocale::formatNumber(const QString &numStr, bool round,
   if (round && precision < 0)
     return numStr;
 
-  // FIXME: Temporary until full language-sensitivity implemented.
-  QString numLang = d->language;
-  int p = tmpString.indexOf('\x04');
-  if (p >= 0) {
-    numLang = tmpString.mid(p + 1);
-    tmpString = tmpString.left(p);
-  }
-
   // Skip the sign (for now)
   const bool neg = (tmpString[0] == '-');
   if (neg || tmpString[0] == '+') tmpString.remove(0, 1);
@@ -1334,8 +1336,10 @@ QString KLocale::formatNumber(const QString &numStr, bool round,
   mantString.prepend(neg?negativeSign():positiveSign());
 
   // Convert to target digit set.
-  mantString = convertDigits(mantString, d->digitSet);
-  expString = convertDigits(expString, d->digitSet);
+  if (d->digitSet != KLocale::ArabicDigits) {
+      mantString = convertDigits(mantString, d->digitSet);
+      expString = convertDigits(expString, d->digitSet);
+  }
 
   return mantString + expString;
 }
@@ -1354,57 +1358,59 @@ QString KLocale::formatByteSize( double size ) const
     //Mebi-byte             MiB             2^20    1,048,576 bytes
     //Kibi-byte             KiB             2^10    1,024 bytes
 
+    if (d->byteSizeFmt.size() == 0) {
+        QMutexLocker lock(&staticData->mutex);
+        // Pretranslated format strings for byte sizes.
+        #define CACHEBYTEFMT(x) { \
+            QString s; \
+            translateRaw(x, 0, &s); \
+            d->byteSizeFmt.append(s); \
+        } while(0)
+        // i18n: Dumb message, avoid any markup or scripting.
+        CACHEBYTEFMT(I18N_NOOP("%1 TiB"));
+        // i18n: Dumb message, avoid any markup or scripting.
+        CACHEBYTEFMT(I18N_NOOP("%1 GiB"));
+        // i18n: Dumb message, avoid any markup or scripting.
+        CACHEBYTEFMT(I18N_NOOP("%1 MiB"));
+        // i18n: Dumb message, avoid any markup or scripting.
+        CACHEBYTEFMT(I18N_NOOP("%1 KiB"));
+        // i18n: Dumb message, avoid any markup or scripting.
+        CACHEBYTEFMT(I18N_NOOP("%1 B"));
+    }
+
+    #define BYTEFMT(unit, n) (d->byteSizeFmt[KLocalePrivate::unit].arg(n))
     QString s;
-    // Gibi-byte
-    if ( size >= 1073741824.0 )
-    {
+    if (size >= 1073741824.0) {
         size /= 1073741824.0;
-        if ( size > 1024 ) // Tebi-byte
-            s = i18n( "%1 TiB", formatNumber(size / 1024.0, 1));
-        else
-            s = i18n( "%1 GiB", formatNumber(size, 1));
-    }
-    // Mebi-byte
-    else if ( size >= 1048576.0 )
-    {
+        if (size > 1024.0) {
+            s = BYTEFMT(TiB, formatNumber(size / 1024.0, 1));
+        } else {
+            s = BYTEFMT(GiB, formatNumber(size, 1));
+        }
+    } else if (size >= 1048576.0) {
         size /= 1048576.0;
-        s = i18n( "%1 MiB", formatNumber(size, 1));
-    }
-    // Kibi-byte
-    else if ( size >= 1024.0 )
-    {
+        s = BYTEFMT(MiB, formatNumber(size, 1));
+    } else if (size >= 1024.0) {
         size /= 1024.0;
-        s = i18n( "%1 KiB", formatNumber(size, 1));
-    }
-    // Just byte
-    else if ( size > 0 )
-    {
-        s = i18n( "%1 B", formatNumber(size, 0));
-    }
-    // Nothing
-    else
-    {
-        s = i18n( "0 B" );
+        s = BYTEFMT(KiB, formatNumber(size, 1));
+    } else {
+        s = BYTEFMT(B, formatNumber(size, 0));
     }
     return s;
 }
 
-QString KLocale::formatDuration( unsigned long mSec) const
+QString KLocale::formatDuration(unsigned long mSec) const
 {
-   if( mSec >= 24*3600000) {
-      return i18n( "%1 days", formatNumber( mSec/(24*3600000), 3));
-   } else if(mSec >= 3600000)
-   {
-      return i18n( "%1 hours", formatNumber( mSec/3600000.0, 2));
-   } else if(mSec >= 60000)
-   {
-      return i18n( "%1 minutes", formatNumber( mSec/60000.0, 2));
-   } else if(mSec >= 1000)
-   {
-      return i18n( "%1 seconds", formatNumber( mSec/1000.0, 2));
-   }
-
-   return i18n( "%1 milliseconds", formatNumber(mSec, 0));
+    if( mSec >= 24*3600000) {
+        return i18nc("@item:intext %1 is a real number, e.g. 1.23 days", "%1 days", formatNumber(mSec / (24 * 3600000.0), 2));
+    } else if(mSec >= 3600000) {
+        return i18nc("@item:intext %1 is a real number, e.g. 1.23 hours", "%1 hours", formatNumber(mSec / 3600000.0, 2));
+    } else if(mSec >= 60000) {
+        return i18nc("@item:intext %1 is a real number, e.g. 1.23 minutes", "%1 minutes", formatNumber(mSec / 60000.0, 2));
+    } else if(mSec >= 1000) {
+        return i18nc("@item:intext %1 is a real number, e.g. 1.23 seconds", "%1 seconds", formatNumber(mSec / 1000.0, 2));
+    }
+    return i18ncp("@item:intext", "%1 millisecond", "%1 milliseconds", mSec);
 }
 
 QString KLocalePrivate::formatSingleDuration( DurationType durationType, int n )

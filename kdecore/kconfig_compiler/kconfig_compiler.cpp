@@ -363,6 +363,15 @@ static QString setFunction(const QString &n, const QString &className = QString(
   return result;
 }
 
+static QString getDefaultFunction(const QString &n, const QString &className = QString())
+{
+  QString result = "default"+n+"Value";
+  result[7] = result[7].toUpper();
+
+  if ( !className.isEmpty() )
+    result = className + "::" + result;
+  return result;
+}
 
 static QString getFunction(const QString &n, const QString &className = QString())
 {
@@ -1144,6 +1153,23 @@ QString memberMutatorBody( CfgEntry *e )
   return result;
 }
 
+// returns the member get default implementation
+// which should go in the h file if inline
+// or the cpp file if not inline
+QString memberGetDefaultBody( CfgEntry *e )
+{
+  QString result = e->code();
+  QTextStream out(&result, QIODevice::WriteOnly);
+
+  if (!e->param().isEmpty()) {
+    out << "  return " << e->defaultValue().replace("[$("+e->param()+")]", "[i]") << ";";
+  } else {
+    out << "  return " << e->defaultValue() << ";";
+  }
+
+  return result;
+}
+
 // returns the item accesor implementation
 // which should go in the h file if inline
 // or the cpp file if not inline
@@ -1582,6 +1608,37 @@ int main( int argc, char **argv )
       h << ";" << endl;
     }
 
+    // Default value Accessor
+    if (!(*itEntry)->defaultValue().isEmpty()) {
+      h << endl;
+      h << "    /**" << endl;
+      h << "      Get " << (*itEntry)->label() << " default value" << endl;
+      h << "    */" << endl;
+      if (staticAccessors)
+        h << "    static" << endl;
+      h << "    ";
+      if (useEnumTypes && t == "Enum")
+        h << enumType(*itEntry);
+      else
+        h << cppType(t);
+      h << " " << getDefaultFunction(n) << "(";
+      if ( !(*itEntry)->param().isEmpty() )
+          h << " " << cppType( (*itEntry)->paramType() ) <<" i ";
+      h << ")" << Const << endl;
+      h << "    {" << endl;
+      h << "        return ";
+      if (useEnumTypes && t == "Enum")
+        h << "static_cast<" << enumType(*itEntry) << ">(";
+      h << getDefaultFunction(n) << "_helper(";
+      if ( !(*itEntry)->param().isEmpty() )
+          h << " i ";
+      h << ")";
+      if (useEnumTypes && t == "Enum")
+        h << ")";
+      h << ";" << endl;
+      h << "    }" << endl;
+    }
+
     // Item accessor
     if ( itemAccessors ) {
       h << endl;
@@ -1687,6 +1744,14 @@ int main( int argc, char **argv )
         h << QString("[%1]").arg( (*itEntry)->paramMax()+1 );
       }
       h << ";" << endl;
+
+      h << "    ";
+      if (staticAccessors)
+        h << "static ";
+      h << cppType((*itEntry)->type()) << " " << getDefaultFunction((*itEntry)->name()) << "_helper(";
+      if ( !(*itEntry)->param().isEmpty() )
+          h << " " << cppType( (*itEntry)->paramType() ) <<" i ";
+      h << ")" << Const << ";" << endl;
     }
 
     h << endl << "  private:" << endl;
@@ -1705,6 +1770,15 @@ int main( int argc, char **argv )
   {
     // use a private class for both member variables and items
     h << "  private:" << endl;
+    for( itEntry = entries.constBegin(); itEntry != entries.constEnd(); ++itEntry ) {
+      h << "    ";
+      if (staticAccessors)
+        h << "static ";
+      h << cppType((*itEntry)->type()) << " " << getDefaultFunction((*itEntry)->name()) << "_helper(";
+      if ( !(*itEntry)->param().isEmpty() )
+          h << " " << cppType( (*itEntry)->paramType() ) <<" i ";
+      h << ")" << Const << ";" << endl;
+    }
     h << "    " + className + "Private *d;" << endl;
   }
 
@@ -2045,6 +2119,8 @@ int main( int argc, char **argv )
       cpp << indent(memberAccessorBody( *itEntry ), 2);
       cpp << "}" << endl << endl;
 
+      // Default value Accessor -- written by the loop below
+
       // Item accessor
       if ( itemAccessors )
       {
@@ -2061,6 +2137,23 @@ int main( int argc, char **argv )
       }
 
       cpp << endl;
+    }
+  }
+
+  // default value getters always go in Cpp
+  for( itEntry = entries.constBegin(); itEntry != entries.constEnd(); ++itEntry ) {
+    QString n = (*itEntry)->name();
+    QString t = (*itEntry)->type();
+
+    // Default value Accessor, as "helper" function
+    if (!(*itEntry)->defaultValue().isEmpty()) {
+      cpp << cppType(t) << " " << getDefaultFunction(n, className) << "_helper(";
+      if ( !(*itEntry)->param().isEmpty() )
+        cpp << " " << cppType( (*itEntry)->paramType() ) <<" i ";
+      cpp << ")" << Const << endl;
+      cpp << "{" << endl;
+      cpp << memberGetDefaultBody(*itEntry) << endl;
+      cpp << "}" << endl << endl;
     }
   }
 

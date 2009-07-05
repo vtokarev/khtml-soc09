@@ -345,7 +345,7 @@ int KTabWidget::tabBarWidthForMaxChars( int maxLength )
   const QFontMetrics fm = tabBar()->fontMetrics();
   int x = 0;
   for ( int i = 0; i < count(); ++i ) {
-    QString newTitle = d->m_tabNames[ i ];
+    QString newTitle = d->m_tabNames.value( i );
     newTitle = KStringHandler::rsqueeze( newTitle, maxLength ).leftJustified( d->m_minLength, ' ' );
 
     int lw = fm.width( newTitle );
@@ -397,6 +397,12 @@ void KTabWidget::setTabText( int index, const QString &text )
     QTabWidget::setTabText( index, text );
 
     if ( index != -1 ) {
+        if (index >= d->m_tabNames.count()) {
+            kWarning(240) << "setTabText(" << index << ") called but d->m_tabNames has only" << d->m_tabNames.count() << "entries";
+            while (index >= d->m_tabNames.count()) {
+                d->m_tabNames.append(QString());
+            }
+        }
       d->m_tabNames[ index ] = text;
       d->resizeTabs( index );
     }
