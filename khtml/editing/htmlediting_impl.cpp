@@ -875,33 +875,40 @@ void ApplyStyleCommandImpl::surroundNodeRangeWithElement(NodeImpl *startNode, No
     }
 }
 
+static bool /*ApplyStyleCommandImpl::*/checkIfNewStylingNeeded(ElementImpl* element, CSSStyleDeclarationImpl *style)
+{
+    CSSStyleDeclarationImpl *computedStyle = element->document()->defaultView()->getComputedStyle(element, 0);
+    assert(computedStyle);
+
+    QListIterator<CSSProperty*> it(*(style->values()));
+    while ( it.hasNext() ) {
+        CSSProperty *property = it.next();
+        CSSValueImpl *computedValue = computedStyle->getPropertyCSSValue(property->id());
+        DOMString newValue = property->value()->cssText();
+        kDebug() << "[new value]:" << property->cssText() << endl;
+        kDebug() << "[computedValue]:" << computedValue->cssText() << endl;
+        if (strcasecmp(computedValue->cssText(), newValue)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void ApplyStyleCommandImpl::applyStyleIfNeeded(DOM::NodeImpl *startNode, DOM::NodeImpl *endNode)
 {
-    StyleChange styleChange = computeStyleChange(Position(startNode, 0), style());
-    int exceptionCode = 0;
-
-    if (styleChange.cssStyle.length() > 0) {
-        ElementImpl *styleElement = document()->createHTMLElement("SPAN");
-        assert(exceptionCode == 0);
-        styleElement->setAttribute(ATTR_STYLE, styleChange.cssStyle);
+    ElementImpl *parent = Position(startNode, 0).element();
+    if (!checkIfNewStylingNeeded(parent, style()))
+        return;
+    ElementImpl *styleElement = 0;
+    if (parent->id() == ID_SPAN && parent->firstChild() == startNode && parent->lastChild() == endNode) {
+        styleElement = parent;
+    } else {
+        styleElement = document()->createHTMLElement("SPAN");
         styleElement->setAttribute(ATTR_CLASS, styleSpanClassString());
         insertNodeBefore(styleElement, startNode);
         surroundNodeRangeWithElement(startNode, endNode, styleElement);
     }
-
-    if (styleChange.applyBold) {
-        ElementImpl *boldElement = document()->createHTMLElement("B");
-        assert(exceptionCode == 0);
-        insertNodeBefore(boldElement, startNode);
-        surroundNodeRangeWithElement(startNode, endNode, boldElement);
-    }
-
-    if (styleChange.applyItalic) {
-        ElementImpl *italicElement = document()->createHTMLElement("I");
-        assert(exceptionCode == 0);
-        insertNodeBefore(italicElement, startNode);
-        surroundNodeRangeWithElement(startNode, endNode, italicElement);
-    }
+    applyStyleChangeOnTheNode(styleElement, style());
 }
 
 bool ApplyStyleCommandImpl::currentlyHasStyle(const Position &pos, const CSSProperty *property) const
