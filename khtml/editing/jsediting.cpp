@@ -321,6 +321,12 @@ static bool execSelectAll(KHTMLPart *part, bool /*userInterface*/, const DOMStri
     return true;
 }
 
+static bool execStrikeThrough(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*value*/)
+{
+    bool isStriked = selectionStartHasStyle(part, CSS_PROP_TEXT_DECORATION, "line-through");
+    return execStyleChange(part, CSS_PROP_TEXT_DECORATION, isStriked ? "none" : "line-through");
+}
+
 static bool execSubscript(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*value*/)
 {
     return execStyleChange(part, CSS_PROP_VERTICAL_ALIGN, "sub");
@@ -335,6 +341,12 @@ static bool execUndo(KHTMLPart *part, bool /*userInterface*/, const DOMString &/
 {
     part->editor()->undo();
     return true;
+}
+
+static bool execUnderline(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*value*/)
+{
+    bool isUnderline = selectionStartHasStyle(part, CSS_PROP_TEXT_DECORATION, "underline");
+    return execStyleChange(part, CSS_PROP_TEXT_DECORATION, isUnderline ? "none" : "underline");
 }
 
 static bool execUnselect(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*value*/)
@@ -419,6 +431,11 @@ static Editor::TriState stateItalic(KHTMLPart *part)
     return stateStyle(part, CSS_PROP_FONT_STYLE, "italic");
 }
 
+static Editor::TriState stateStrike(KHTMLPart *part)
+{
+    return stateStyle(part, CSS_PROP_TEXT_DECORATION, "line-through");
+}
+
 static Editor::TriState stateSubscript(KHTMLPart *part)
 {
     return stateStyle(part, CSS_PROP_VERTICAL_ALIGN, "sub");
@@ -427,6 +444,11 @@ static Editor::TriState stateSubscript(KHTMLPart *part)
 static Editor::TriState stateSuperscript(KHTMLPart *part)
 {
     return stateStyle(part, CSS_PROP_VERTICAL_ALIGN, "super");
+}
+
+static Editor::TriState stateUnderline(KHTMLPart *part)
+{
+    return stateStyle(part, CSS_PROP_TEXT_DECORATION, "underline");
 }
 
 // =============================================================================================
@@ -493,8 +515,10 @@ static const EditorCommandInfo commands[] = {
     { "print", { execPrint, enabled, stateNone, valueNull } },
     { "redo", { execRedo, enabledRedo, stateNone, valueNull } },
     { "selectAll", { execSelectAll, enabled, stateNone, valueNull } },
+    { "StrikeThrough", {execStrikeThrough, enabled, stateStrike, valueNull } },
     { "subscript", { execSubscript, enabledAnySelection, stateSubscript, valueNull } },
     { "superscript", { execSuperscript, enabledAnySelection, stateSuperscript, valueNull } },
+    { "underline", { execUnderline, enabledAnySelection, stateUnderline, valueNull } },
     { "undo", { execUndo, enabledUndo, stateNone, valueNull } },
     { "unselect", { execUnselect, enabledAnySelection, stateNone, valueNull } }
 
