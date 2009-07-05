@@ -2978,6 +2978,7 @@ JSEditor *DocumentImpl::jsEditor()
 
 bool DocumentImpl::execCommand(const DOMString &command, bool userInterface, const DOMString &value)
 {
+    kDebug() << "[execute command]" << command << userInterface << value << endl;
     return jsEditor()->execCommand(jsEditor()->commandImp(command), userInterface, value);
 }
 
@@ -2998,6 +2999,7 @@ bool DocumentImpl::queryCommandState(const DOMString &command)
 
 bool DocumentImpl::queryCommandSupported(const DOMString &command)
 {
+    kDebug() << "[query command supported]" << command << endl;
     return jsEditor()->queryCommandSupported(jsEditor()->commandImp(command));
 }
 
