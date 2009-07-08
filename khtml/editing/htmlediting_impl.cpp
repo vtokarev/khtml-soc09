@@ -1053,27 +1053,21 @@ Position DeleteCollapsibleWhitespaceCommandImpl::deleteWhitespace(const Position
 {
     Position upstream = pos.equivalentUpstreamPosition();
     Position downstream = pos.equivalentDownstreamPosition();
+    kDebug() << "[pos]" << pos << endl;
+    kDebug() << "[upstream:downstream]" << upstream << downstream << endl;
+    printEnclosingBlockTree(pos.node());
 
     bool del = shouldDeleteUpstreamPosition(upstream);
-
-    kDebug(6200) << "pos:" << DOM::getPrintableName(pos.node()->id()) << "["<< pos.node() << ":" << pos.offset() << "]";
-    if (upstream == downstream) {
-        kDebug(6200) << "same:" << DOM::getPrintableName(upstream.node()->id()) << "["<< upstream.node()<< ":" << upstream.offset()<< "]";
-    }
-    else {
-        kDebug(6200) << "upstream:" << ( del ? "DELETE" : "SKIP") << DOM::getPrintableName(upstream.node()->id())<< "["<< upstream.node() << ":" <<  upstream.offset()<< "]";
-        PositionIterator it(upstream);
-        for (it.next(); it.current() != downstream; it.next()) {
-            if (it.current().node()->isTextNode() && (long)static_cast<TextImpl *>(it.current().node())->length() == it.current().offset())
-                kDebug(6200) << "   node:    AT END"<< DOM::getPrintableName(it.current().node()->id())<< "["<< it.current().node()<< ":" << it.current().offset()<< "]";
-            else
-                kDebug(6200) << "   node:    DELETE"<< DOM::getPrintableName(it.current().node()->id())<< "["<< it.current().node()<< ":" << it.current().offset()<< "]";
-        }
-        kDebug(6200) << "downstream:" << DOM::getPrintableName(downstream.node()->id()) << "["<<  downstream.node() << ":" << downstream.offset()<< "]";
-    }
+    kDebug() << "[delete upstream]" << del << endl;
 
     if (upstream == downstream)
         return upstream;
+
+    PositionIterator iter(upstream);
+    kDebug() << "[before print]" << endl;
+    for (iter.next(); iter.current() != downstream; iter.next())
+        kDebug() << "[iterate]" << iter.current() << endl;
+    kDebug() << "[after print]" << endl;
 
     PositionIterator it(upstream);
     Position deleteStart = upstream;
