@@ -101,6 +101,27 @@ static NodeImpl *previousRenderedEditable(NodeImpl *node)
     return n1 && n2 && rootNavigableElement(n1) == rootNavigableElement(n2);
 }
 
+static void printSubTree(NodeImpl *node, int indent = 0)
+{
+    QString temp;
+    temp.fill(' ', indent);
+    kDebug() << temp << node << node->nodeName() << node->renderer()
+        << (node->renderer() ? node->renderer()->renderName() : "")
+        << (node->isTextNode() ? static_cast<TextImpl*>(node)->toString() : "") << endl;
+    for (NodeImpl *subNode = node->firstChild(); subNode; subNode = subNode->nextSibling())
+        printSubTree(subNode, indent + 1);
+}
+
+void printEnclosingBlockTree(NodeImpl *node)
+{
+    printSubTree(node->enclosingBlockFlowElement());
+}
+
+void printRootEditableTree(NodeImpl *node)
+{
+    printSubTree(node->rootEditableElement());
+}
+
 Position::Position(NodeImpl *node, long offset)
     : m_node(0), m_offset(offset)
 {

@@ -36,6 +36,9 @@ class NodeImpl;
 NodeImpl *rootNavigableElement(NodeImpl *node);
 bool inSameRootNavigableElement(NodeImpl *n1, NodeImpl *n2);
 
+void printEnclosingBlockTree(NodeImpl *node);
+void printRootEditableTree(NodeImpl *node);
+
 class Position
 {
 public:
