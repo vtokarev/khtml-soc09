@@ -40,13 +40,17 @@ RenderPosition RenderPosition::fromDOMPosition(const Position& position)
         return RenderPosition();
 
     NodeImpl *node = position.node();
-    const RenderObject *renderObject = node->renderer();
+    RenderObject *renderObject = node->renderer();
     // if no renderer -> no position in the rendering is possible
     if (!renderObject)
         return RenderPosition();
 
     if (!renderObject->isText())
         return RenderPosition(position);
+
+    if (renderObject->isBR())
+        return (!position.offset() && renderObject->inlineBox(0)) ? RenderPosition(Position(node, 0)) : RenderPosition();
+        // return renderObject->inlineBox(0) ? RenderPosition(position) : RenderPosition();
 
     kDebug() << "[text position]" << position << endl;
     const RenderText *renderText = static_cast<const RenderText*>(renderObject);
@@ -76,6 +80,10 @@ InlineBox* RenderPosition::getInlineBoxAndOffset(int& offset) const
     if (!renderObject->isText()) {
         offset = m_position.offset();
         return renderObject->inlineBox(offset);
+    }
+    if (renderObject->isBR()) {
+        offset = m_position.offset();
+        return renderObject->inlineBox(0);
     }
     int domOffset = m_position.offset();
 
