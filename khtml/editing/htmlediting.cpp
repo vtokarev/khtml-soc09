@@ -772,14 +772,14 @@ void TypingCommand::deleteKeyPressed(DocumentImpl *document)
     assert(ed);
     
     EditCommand lastEditCommand = ed->lastEditCommand();
-    if (isOpenForMoreTypingCommand(lastEditCommand)) {
-        static_cast<TypingCommand &>(lastEditCommand).deleteKeyPressed();
-    }
-    else {
+    // FIXME reenable after properly modify selection of the lastEditCommand
+    // if (isOpenForMoreTypingCommand(lastEditCommand)) {
+    //     static_cast<TypingCommand &>(lastEditCommand).deleteKeyPressed();
+    // } else {
         TypingCommand typingCommand(document);
         typingCommand.apply();
         typingCommand.deleteKeyPressed();
-    }
+    // }
 }
 
 bool TypingCommand::isOpenForMoreTypingCommand(const EditCommand &cmd)
