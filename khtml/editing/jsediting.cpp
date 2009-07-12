@@ -40,6 +40,7 @@
 #include <QString>
 
 using khtml::TypingCommand;
+using khtml::InsertListCommand;
 // 
 #define KPAC khtml::KHTMLPartAccessor
 
@@ -258,6 +259,18 @@ static bool execInsertParagraph(KHTMLPart * /*part*/, bool /*userInterface*/, co
 static bool execInsertText(KHTMLPart *part, bool /*userInterface*/, const DOMString &value)
 {
     TypingCommand::insertText(KPAC::xmlDocImpl(part), value);
+    return true;
+}
+
+static bool execInsertOrderedList(KHTMLPart *part, bool /*userInterface*/, const DOMString &value)
+{
+    InsertListCommand::insertList(KPAC::xmlDocImpl(part), InsertListCommand::OrderedList);
+    return true;
+}
+
+static bool execInsertUnorderedList(KHTMLPart *part, bool /*userInterface*/, const DOMString &value)
+{
+    InsertListCommand::insertList(KPAC::xmlDocImpl(part), InsertListCommand::UnorderedList);
     return true;
 }
 
@@ -498,8 +511,10 @@ static const EditorCommandInfo commands[] = {
     { "foreColor", { execForeColor, enabledAnySelection, stateNone, valueForeColor } },
     { "indent", { execIndent, enabledAnySelection, stateNone, valueNull } },
     { "insertNewline", { execInsertNewline, enabledAnySelection, stateNone, valueNull } },
+    { "insertOrderedList", { execInsertOrderedList, enabledAnySelection, stateNone, valueNull } },
     { "insertParagraph", { execInsertParagraph, enabledAnySelection, stateNone, valueNull } },
     { "insertText", { execInsertText, enabledAnySelection, stateNone, valueNull } },
+    { "insertUnorderedList", { execInsertUnorderedList, enabledAnySelection, stateNone, valueNull } },
     { "italic", { execItalic, enabledAnySelection, stateItalic, valueNull } },
     { "justifyCenter", { execJustifyCenter, enabledAnySelection, stateNone, valueNull } },
     { "justifyFull", { execJustifyFull, enabledAnySelection, stateNone, valueNull } },

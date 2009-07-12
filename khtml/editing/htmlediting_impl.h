@@ -616,6 +616,25 @@ private:
 };
 
 //------------------------------------------------------------------------------------------
+// InsertListCommandImpl
+
+class InsertListCommandImpl : public CompositeEditCommandImpl
+{
+public:
+    typedef InsertListCommand::Type Type;
+
+    InsertListCommandImpl(DOM::DocumentImpl *document, Type type);
+    virtual ~InsertListCommandImpl();
+
+    virtual int commandID() const { return InsertListCommandID; }
+
+    virtual void doApply();
+
+private:
+    Type m_listType;
+};
+
+//------------------------------------------------------------------------------------------
 
 } // end namespace khtml
 

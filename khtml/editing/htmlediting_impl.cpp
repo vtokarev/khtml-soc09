@@ -2535,5 +2535,22 @@ void TypingCommandImpl::removeCommand(const EditCommand &cmd)
 }
 
 //------------------------------------------------------------------------------------------
+// InsertListCommandImpl
+
+InsertListCommandImpl::InsertListCommandImpl(DocumentImpl *document, Type type)
+    : CompositeEditCommandImpl(document), m_listType(type)
+{
+}
+
+InsertListCommandImpl::~InsertListCommandImpl()
+{
+}
+
+void InsertListCommandImpl::doApply()
+{
+    kDebug() << "[make current selection/paragraph a list]" << endingSelection() << endl;
+}
+
+//------------------------------------------------------------------------------------------
 
 } // namespace khtml

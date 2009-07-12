@@ -824,4 +824,30 @@ void TypingCommand::deleteKeyPressed()
     return impl()->deleteKeyPressed();
 }
 
+//------------------------------------------------------------------------------------------
+// InsertListCommand
+
+InsertListCommand::InsertListCommand(DocumentImpl *document, Type type)
+    : CompositeEditCommand(new InsertListCommandImpl(document, type))
+{
+}
+
+InsertListCommand::~InsertListCommand()
+{
+}
+
+InsertListCommandImpl *InsertListCommand::impl() const
+{
+    return static_cast<InsertListCommandImpl*>(get());
+}
+
+void InsertListCommand::insertList(DocumentImpl *document, Type type)
+{
+    InsertListCommand insertCommand(document, type);
+    insertCommand.apply();
+}
+
+//------------------------------------------------------------------------------------------
+
+
 } // namespace khtml

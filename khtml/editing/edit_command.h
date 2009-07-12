@@ -47,6 +47,7 @@ enum ECommandID {
     DeleteTextCommandID,
     InputNewlineCommandID,
     InputTextCommandID,
+    InsertListCommandID,
     InsertNodeBeforeCommandID,
     InsertTextCommandID,
     JoinTextNodesCommandID,

@@ -54,6 +54,7 @@ class EditCommand;
 class EditCommandImpl;
 class InputNewlineCommandImpl;
 class InputTextCommandImpl;
+class InsertListCommandImpl;
 class InsertNodeBeforeCommandImpl;
 class InsertTextCommandImpl;
 class JoinTextNodesCommandImpl;
@@ -408,6 +409,22 @@ private:
     void insertNewline();
 
     inline TypingCommandImpl *impl() const;
+};
+
+//------------------------------------------------------------------------------------------
+// InsertListCommand
+
+class InsertListCommand : public CompositeEditCommand
+{
+public:
+    enum Type { OrderedList, UnorderedList };
+    static void insertList(DOM::DocumentImpl *document, Type type);
+
+private:
+    InsertListCommand(DOM::DocumentImpl *document, Type type);
+    ~InsertListCommand();
+
+    inline InsertListCommandImpl *impl() const;
 };
 
 //------------------------------------------------------------------------------------------
