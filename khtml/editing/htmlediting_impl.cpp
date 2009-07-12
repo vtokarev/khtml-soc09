@@ -2549,6 +2549,31 @@ InsertListCommandImpl::~InsertListCommandImpl()
 void InsertListCommandImpl::doApply()
 {
     kDebug() << "[make current selection/paragraph a list]" << endingSelection() << endl;
+    Position start = endingSelection().start();
+    Position end = endingSelection().end();
+    ElementImpl *startBlock = start.node()->enclosingBlockFlowElement();
+    ElementImpl *endBlock = end.node()->enclosingBlockFlowElement();
+    kDebug() << "[start:end blocks]" << startBlock << endBlock << endl;
+    printEnclosingBlockTree(start.node());
+    if (startBlock == endBlock) {
+        if (startBlock->id() == ID_LI) {
+            kDebug() << "[li]" << endl;
+        } else {
+            ElementImpl *ol = document()->createHTMLElement("OL");
+            ElementImpl *li = document()->createHTMLElement("LI");
+            appendNode(ol, li);
+            NodeImpl *nextNode;
+            for (NodeImpl *node = startBlock->firstChild(); node; node = nextNode) {
+                kDebug() << "[reattach node]" << node << endl;
+                nextNode = node->nextSibling();
+                removeNode(node);
+                appendNode(li, node);
+            }
+            appendNode(startBlock, ol);
+        }
+    } else {
+        kDebug() << "[different blogs are not supported yet]" << endl;
+    }
 }
 
 //------------------------------------------------------------------------------------------
