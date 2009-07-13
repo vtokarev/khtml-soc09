@@ -60,6 +60,7 @@ class KateSearchBar;
 class KateViModeBar;
 class KateViewBar;
 class KateGotoBar;
+class KateDictionaryBar;
 
 class KToggleAction;
 class KAction;
@@ -294,7 +295,7 @@ class KateView : public KTextEditor::View,
   //
   public:
     // should cursor be wrapped ? take config + blockselection state in account
-    bool wrapCursor ();
+    bool wrapCursor () const;
 
     // some internal functions to get selection state of a line/col
     bool cursorSelected(const KTextEditor::Cursor& cursor);
@@ -524,7 +525,8 @@ class KateView : public KTextEditor::View,
      * accessor to katedocument pointer
      * @return pointer to document
      */
-    inline KateDocument*  doc() { return m_doc; }
+    KateDocument*  doc() { return m_doc; }
+    const KateDocument*  doc() const { return m_doc; }
 
   public Q_SLOTS:
     void slotUpdateUndo();
@@ -586,7 +588,7 @@ class KateView : public KTextEditor::View,
     KToggleAction *m_toggleInsert;
     KToggleAction *m_toggleWriteLock;
 
-    KateDocument*          m_doc;
+    KateDocument     *const m_doc;
     KateViewInternal*      m_viewInternal;
     KateRenderer*          m_renderer;
     KateSpell             *m_spell;
@@ -614,7 +616,8 @@ class KateView : public KTextEditor::View,
 
   private Q_SLOTS:
     void updateFoldingConfig ();
-
+  public Q_SLOTS:
+    void slotOnTheFlySpellCheckingChanged();
   private:
     KateViewConfig *m_config;
     bool m_startingUp;
@@ -640,6 +643,8 @@ class KateView : public KTextEditor::View,
     KateSearchBar *searchBar (bool initHintAsPower = false);
     KateViModeBar *viModeBar();
     KateGotoBar *gotoBar ();
+    KateDictionaryBar *dictionaryBar();
+
   /**
    * viewbar + its widgets
    * they are created on demand...
@@ -653,6 +658,7 @@ class KateView : public KTextEditor::View,
     KateSearchBar *m_searchBar;
     KateViModeBar *m_viModeBar;
     KateGotoBar *m_gotoBar;
+    KateDictionaryBar *m_dictionaryBar;
 
   // vi Mode
   public:
@@ -685,6 +691,22 @@ class KateView : public KTextEditor::View,
      * Update vi mode statusbar with the (partial) vi command being typed
      */
     void updateViModeBarCmd();
+    
+  public:
+    KTextEditor::Range visibleRange();
+    
+  Q_SIGNALS:
+    void displayRangeChanged(KateView *view);
+    
+    
+  protected:
+    KToggleAction*         m_toggleOnTheFlySpellCheck;
+
+  protected Q_SLOTS:
+    void toggleOnTheFlySpellCheck(bool b);
+
+  public Q_SLOTS:
+    void changeDictionary();
 };
 
 /**

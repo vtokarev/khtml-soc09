@@ -777,8 +777,8 @@ QString Applet::category(const QString &appletName)
         return QString();
     }
 
-    QString constraint = QString("[X-KDE-PluginInfo-Name] == '%1'").arg(appletName);
-    KService::List offers = KServiceTypeTrader::self()->query("Plasma/Applet", constraint);
+    const QString constraint = QString("[X-KDE-PluginInfo-Name] == '%1'").arg(appletName);
+    const KService::List offers = KServiceTypeTrader::self()->query("Plasma/Applet", constraint);
 
     if (offers.isEmpty()) {
         return QString();
@@ -1019,6 +1019,17 @@ QVariantList Applet::startupArguments() const
     return d->args;
 }
 
+ItemStatus Applet::status() const
+{
+    return d->itemStatus;
+}
+
+void Applet::setStatus(const ItemStatus status)
+{
+    d->itemStatus = status;
+    emit newStatus(status);
+}
+
 void Applet::flushPendingConstraintsEvents()
 {
     if (d->pendingConstraints == NoConstraint) {
@@ -1134,12 +1145,6 @@ void Applet::flushPendingConstraintsEvents()
                 setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding));
             } else if (formFactor() == Vertical) {
                 setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed));
-            }
-        } else {
-            if (formFactor() == Horizontal) {
-                setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding));
-            } else if (formFactor() == Vertical) {
-                setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred));
             }
         }
         updateGeometry();
@@ -1818,12 +1823,12 @@ QStringList Applet::listCategories(const QString &parentApp, bool visibleOnly)
     }
 
     KConfigGroup group(KGlobal::config(), "General");
-    QStringList excluded = group.readEntry("ExcludeCategories", QStringList());
+    const QStringList excluded = group.readEntry("ExcludeCategories", QStringList());
     foreach (const QString &category, excluded) {
         constraint.append(" and [X-KDE-PluginInfo-Category] != '").append(category).append("'");
     }
 
-    KService::List offers = KServiceTypeTrader::self()->query("Plasma/Applet", constraint);
+    const KService::List offers = KServiceTypeTrader::self()->query("Plasma/Applet", constraint);
     QStringList categories;
     QSet<QString> known = AppletPrivate::knownCategories();
     foreach (const KService::Ptr &applet, offers) {
@@ -1886,7 +1891,7 @@ Applet *Applet::load(const QString &appletName, uint appletId, const QVariantLis
         return 0;
     }
 
-    QString constraint = QString("[X-KDE-PluginInfo-Name] == '%1'").arg(appletName);
+    const QString constraint = QString("[X-KDE-PluginInfo-Name] == '%1'").arg(appletName);
     KService::List offers = KServiceTypeTrader::self()->query("Plasma/Applet", constraint);
 
     bool isContainment = false;
@@ -2191,6 +2196,7 @@ AppletPrivate::AppletPrivate(KService::Ptr service, int uniqueID, Applet *applet
           actions(AppletPrivate::defaultActions(applet)),
           activationAction(0),
           shortcutEditor(0),
+          itemStatus(UnknownStatus),
           constraintsTimerId(0),
           modificationsTimerId(-1),
           hasConfigurationInterface(false),

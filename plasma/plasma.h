@@ -250,6 +250,18 @@ enum MessageButton {
 };
 Q_DECLARE_FLAGS(MessageButtons, MessageButton)
 
+/**
+ * Status of an applet
+ * @since 4.3
+ */
+enum ItemStatus {
+    UnknownStatus = 0,
+    PassiveStatus = 1,
+    ActiveStatus = 2,
+    NeedsAttentionStatus = 3,
+    AcceptingInputStatus = 4
+};
+Q_ENUMS(ItemStatus)
 
 /**
  * @return the scaling factor (0..1) for a ZoomLevel
@@ -287,5 +299,6 @@ PLASMA_EXPORT QGraphicsView *viewFor(const QGraphicsItem *item);
 Q_DECLARE_OPERATORS_FOR_FLAGS(Plasma::Constraints)
 Q_DECLARE_OPERATORS_FOR_FLAGS(Plasma::Flip)
 Q_DECLARE_OPERATORS_FOR_FLAGS(Plasma::ComponentTypes)
+
 
 #endif // multiple inclusion guard

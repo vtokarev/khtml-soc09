@@ -2,6 +2,7 @@
     Tests for KConfig Compiler
 
     Copyright (c) 2005      by Duncan Mac-Vicar       <duncan@kde.org>
+    Copyright (c) 2009      by Pino Toscano           <pino@kde.org>
 
     *************************************************************************
     *                                                                       *
@@ -24,7 +25,10 @@ class KConfigCompiler_Test : public QObject
 {
 	Q_OBJECT
 private Q_SLOTS:
-	void testExpectedOutput();
+    void testBaselineComparison_data();
+    void testBaselineComparison();
+    void testRunning_data();
+    void testRunning();
 private:
 	void performCompare(const QString &fileName, bool fail=false);
 };

@@ -24,22 +24,29 @@
 #include <QString>
 #include <QCoreApplication>
 
+#include <kconfig.h>
+#include <kconfiggroup.h>
+
+#include "kateconfig.h"
+#include "kateglobal.h"
+#include "kateviglobal.h"
 #include "katevinormalmode.h"
 #include "kateviinsertmode.h"
 #include "katevivisualmode.h"
-#include "katevikeysequenceparser.h"
+#include "katevireplacemode.h"
+#include "katevikeyparser.h"
 
 KateViInputModeManager::KateViInputModeManager(KateView* view, KateViewInternal* viewInternal)
 {
   m_viNormalMode = new KateViNormalMode(this, view, viewInternal);
   m_viInsertMode = new KateViInsertMode(this, view, viewInternal);
   m_viVisualMode = new KateViVisualMode(this, view, viewInternal);
+  m_viReplaceMode = new KateViReplaceMode(this, view, viewInternal);
 
   m_currentViMode = NormalMode;
 
   m_view = view;
   m_viewInternal = viewInternal;
-  m_keyParser = new KateViKeySequenceParser();
 
   m_runningMacro = false;
 }
@@ -49,7 +56,6 @@ KateViInputModeManager::~KateViInputModeManager()
   delete m_viNormalMode;
   delete m_viInsertMode;
   delete m_viVisualMode;
-  delete m_keyParser;
 }
 
 bool KateViInputModeManager::handleKeypress(const QKeyEvent *e)
@@ -76,6 +82,9 @@ bool KateViInputModeManager::handleKeypress(const QKeyEvent *e)
   case VisualBlockMode:
     res = m_viVisualMode->handleKeypress(e);
     break;
+  case ReplaceMode:
+    res = m_viReplaceMode->handleKeypress(e);
+    break;
   default:
     kDebug( 13070 ) << "WARNING: Unhandled keypress";
     res = false;
@@ -92,7 +101,7 @@ void KateViInputModeManager::feedKeyPresses(const QString &keyPresses) const
 
   kDebug( 13070 ) << "Repeating change";
   foreach(const QChar &c, keyPresses) {
-    QString decoded = m_keyParser->decodeKeySequence(QString(c));
+    QString decoded = KateViKeyParser::getInstance()->decodeKeySequence(QString(c));
     key = -1;
     mods = Qt::NoModifier;
     text.clear();
@@ -135,7 +144,7 @@ void KateViInputModeManager::feedKeyPresses(const QString &keyPresses) const
         }
 
         if (decoded.length() > 1 ) {
-          key = m_keyParser->vi2qt(decoded);
+          key = KateViKeyParser::getInstance()->vi2qt(decoded);
         } else {
           key = int(decoded.at(0).toUpper().toAscii());
           text = decoded.at(0);
@@ -143,7 +152,7 @@ void KateViInputModeManager::feedKeyPresses(const QString &keyPresses) const
           kDebug( 13070 ) << "###########" << Qt::Key_W;
         }
       } else { // no modifiers
-        key = m_keyParser->vi2qt(decoded);
+        key = KateViKeyParser::getInstance()->vi2qt(decoded);
       }
     } else {
       key = decoded.at(0).unicode();
@@ -187,10 +196,10 @@ void KateViInputModeManager::storeChangeCommand()
       keyPress.append( ( mods & Qt::ControlModifier ) ? "c-" : "" );
       keyPress.append( ( mods & Qt::AltModifier ) ? "a-" : "" );
       keyPress.append( ( mods & Qt::MetaModifier ) ? "m-" : "" );
-      keyPress.append( keyCode <= 0xFF ? QChar( keyCode ) : m_keyParser->qt2vi( keyCode ) );
+      keyPress.append( keyCode <= 0xFF ? QChar( keyCode ) : KateViKeyParser::getInstance()->qt2vi( keyCode ) );
       keyPress.append( '>' );
 
-      key = m_keyParser->encodeKeySequence( keyPress ).at( 0 );
+      key = KateViKeyParser::getInstance()->encodeKeySequence( keyPress ).at( 0 );
     }
 
     m_lastChange.append(key);
@@ -216,7 +225,8 @@ ViMode KateViInputModeManager::getCurrentViMode() const
 
 void KateViInputModeManager::viEnterNormalMode()
 {
-  bool moveCursorLeft = m_currentViMode == InsertMode && m_viewInternal->getCursor().column() > 0;
+  bool moveCursorLeft = (m_currentViMode == InsertMode || m_currentViMode == ReplaceMode)
+    && m_viewInternal->getCursor().column() > 0;
 
   changeViMode(NormalMode);
 
@@ -241,6 +251,13 @@ void KateViInputModeManager::viEnterVisualMode( ViMode mode )
   getViVisualMode()->init();
 }
 
+void KateViInputModeManager::viEnterReplaceMode()
+{
+  changeViMode(ReplaceMode);
+  m_viewInternal->repaint ();
+}
+
+
 KateViNormalMode* KateViInputModeManager::getViNormalMode()
 {
   return m_viNormalMode;
@@ -256,6 +273,11 @@ KateViVisualMode* KateViInputModeManager::getViVisualMode()
   return m_viVisualMode;
 }
 
+KateViReplaceMode* KateViInputModeManager::getViReplaceMode()
+{
+  return m_viReplaceMode;
+}
+
 const QString KateViInputModeManager::getVerbatimKeys() const
 {
   QString cmd;
@@ -265,6 +287,7 @@ const QString KateViInputModeManager::getVerbatimKeys() const
     cmd = m_viNormalMode->getVerbatimKeys();
     break;
   case InsertMode:
+  case ReplaceMode:
     // ...
     break;
   case VisualMode:
@@ -277,54 +300,34 @@ const QString KateViInputModeManager::getVerbatimKeys() const
   return cmd;
 }
 
-void KateViInputModeManager::addMapping( ViMode mode, const QString &from, const QString &to )
+void KateViInputModeManager::readSessionConfig( const KConfigGroup& config )
 {
-  switch ( mode ) {
-  case NormalMode:
-    m_viNormalMode->addMapping( from, to );
-    break;
-  default:
-    break;
-  /*
-  case InsertMode:
-  case VisualMode:
-  case VisualLineMode:
-  */
+  QStringList names = config.readEntry( "ViRegisterNames", QStringList() );
+  QStringList contents = config.readEntry( "ViRegisterContents", QStringList() );
+
+  // sanity check
+  if ( names.size() == contents.size() ) {
+    for ( int i = 0; i < names.size(); i++ ) {
+      KateGlobal::self()->viInputModeGlobal()->fillRegister( names.at( i ).at( 0 ), contents.at( i ) );
+    }
   }
 }
 
-const QString KateViInputModeManager::getMapping( ViMode mode, const QString &from )
+void KateViInputModeManager::writeSessionConfig( KConfigGroup& config )
 {
-  switch ( mode ) {
-  case NormalMode:
-    return m_viNormalMode->getMapping( from );
-    break;
-  default:
-    break;
-  /*
-  case InsertMode:
-  case VisualMode:
-  case VisualLineMode:
-  */
+  const QMap<QChar, QString>* regs = KateGlobal::self()->viInputModeGlobal()->getRegisters();
+  QStringList names, contents;
+  foreach ( const QString &s, regs->keys() ) {
+    QString c = regs->value( s.at(0) );
+    if ( c.length() <= 1000 ) {
+      names << s;
+      contents << c;
+    } else {
+      kDebug( 13070 ) << "Did not save contents of register " << s << ": contents too long ("
+        << c.length() << " characters)";
+    }
   }
 
-  return QString();
-}
-
-const QStringList KateViInputModeManager::getMappings( ViMode mode )
-{
-  switch ( mode ) {
-  case NormalMode:
-    return m_viNormalMode->getMappings();
-    break;
-  default:
-    break;
-  /*
-  case InsertMode:
-  case VisualMode:
-  case VisualLineMode:
-  */
-  }
-
-  return QStringList();
+  config.writeEntry( "ViRegisterNames", names );
+  config.writeEntry( "ViRegisterContents", contents );
 }

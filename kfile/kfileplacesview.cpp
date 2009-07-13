@@ -575,7 +575,7 @@ void KFilePlacesView::contextMenuEvent(QContextMenuEvent *event)
             }
             add = menu.addAction(KIcon("document-new"), i18n("Add Entry..."));
             mainSeparator = menu.addSeparator();
-            edit = menu.addAction(KIcon("document-properties"), i18n("&Edit '%1'...", label));
+            edit = menu.addAction(KIcon("document-properties"), i18n("&Edit Entry '%1'...", label));
         } else {
             eject = placesModel->ejectActionForIndex(index);
             if (eject!=0) {
@@ -597,7 +597,7 @@ void KFilePlacesView::contextMenuEvent(QContextMenuEvent *event)
             add = menu.addAction(KIcon("document-new"), i18n("Add Entry..."));
         }
 
-        hide = menu.addAction(i18n("&Hide '%1'", label));
+        hide = menu.addAction(i18n("&Hide Entry '%1'", label));
         hide->setCheckable(true);
         hide->setChecked(placesModel->isHidden(index));
     } else {
@@ -617,7 +617,7 @@ void KFilePlacesView::contextMenuEvent(QContextMenuEvent *event)
 
     QAction* remove = 0;
     if (index.isValid() && !placesModel->isDevice(index)) {
-        remove = menu.addAction( KIcon("edit-delete"), i18n("&Remove '%1'", label));
+        remove = menu.addAction( KIcon("edit-delete"), i18n("&Remove Entry '%1'", label));
     }
 
     if (menu.isEmpty()) {
@@ -831,8 +831,12 @@ void KFilePlacesView::setModel(QAbstractItemModel *model)
 {
     QListView::setModel(model);
     d->updateHiddenRows();
+    // Uses Qt::QueuedConnection to delay the time when the slot will be
+    // called. In case of an item move the remove+add will be done before
+    // we adapt the item size (otherwise we'd get it wrong as we'd execute
+    // it after the remove only).
     connect(model, SIGNAL(rowsRemoved(const QModelIndex&, int, int)),
-            this, SLOT(adaptItemSize()));
+            this, SLOT(adaptItemSize()), Qt::QueuedConnection);
     connect(selectionModel(), SIGNAL(currentChanged(const QModelIndex&,const QModelIndex&)),
             d->watcher, SLOT(currentIndexChanged(const QModelIndex&)));
 }

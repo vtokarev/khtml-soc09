@@ -57,6 +57,7 @@ public:
         : q(theme),
           colorScheme(QPalette::Active, KColorScheme::Window, KSharedConfigPtr(0)),
           buttonColorScheme(QPalette::Active, KColorScheme::Button, KSharedConfigPtr(0)),
+          viewColorScheme(KColorScheme(QPalette::Active, KColorScheme::View, KSharedConfigPtr(0))),
           defaultWallpaperTheme(DEFAULT_WALLPAPER_THEME),
           defaultWallpaperSuffix(DEFAULT_WALLPAPER_SUFFIX),
           defaultWallpaperWidth(DEFAULT_WALLPAPER_WIDTH),
@@ -140,6 +141,7 @@ public:
     KSharedConfigPtr colors;
     KColorScheme colorScheme;
     KColorScheme buttonColorScheme;
+    KColorScheme viewColorScheme;
     KConfigGroup cfg;
     QFont generalFont;
     QString defaultWallpaperTheme;
@@ -223,7 +225,7 @@ void ThemePrivate::discardCache(bool recreateElementsCache)
     saveTimer->stop();
 
     svgElementsCache = 0;
-    QString svgElementsFile = KStandardDirs::locateLocal("cache", "plasma-svgelements-" + themeName);
+    const QString svgElementsFile = KStandardDirs::locateLocal("cache", "plasma-svgelements-" + themeName);
     if (!svgElementsFile.isEmpty()) {
         QFile f(svgElementsFile);
         f.remove();
@@ -253,6 +255,7 @@ void ThemePrivate::colorsChanged()
     discardCache(true);
     colorScheme = KColorScheme(QPalette::Active, KColorScheme::Window, colors);
     buttonColorScheme = KColorScheme(QPalette::Active, KColorScheme::Button, colors);
+    viewColorScheme = KColorScheme(QPalette::Active, KColorScheme::View, colors);
     emit q->themeChanged();
 }
 
@@ -320,7 +323,7 @@ PackageStructure::Ptr Theme::packageStructure()
 
 KPluginInfo::List Theme::listThemeInfo()
 {
-    QStringList themes = KGlobal::dirs()->findAllResources("data", "desktoptheme/*/metadata.desktop",
+    const QStringList themes = KGlobal::dirs()->findAllResources("data", "desktoptheme/*/metadata.desktop",
                                                            KStandardDirs::NoDuplicates);
     return KPluginInfo::fromFiles(themes);
 }
@@ -380,11 +383,11 @@ void ThemePrivate::setThemeName(const QString &tempThemeName, bool writeSettings
     themeName = theme;
 
     // load the color scheme config
-    QString colorsFile = KStandardDirs::locate("data", "desktoptheme/" + theme + "/colors");
+    const QString colorsFile = KStandardDirs::locate("data", "desktoptheme/" + theme + "/colors");
     //kDebug() << "we're going for..." << colorsFile << "*******************";
 
     // load the wallpaper settings, if any
-    QString metadataPath(KStandardDirs::locate("data", "desktoptheme/" + theme + "/metadata.desktop"));
+    const QString metadataPath(KStandardDirs::locate("data", "desktoptheme/" + theme + "/metadata.desktop"));
     KConfig metadata(metadataPath);
     KConfigGroup cg;
     if (metadata.hasGroup("Wallpaper")) {
@@ -439,6 +442,7 @@ void ThemePrivate::setThemeName(const QString &tempThemeName, bool writeSettings
 
     colorScheme = KColorScheme(QPalette::Active, KColorScheme::Window, colors);
     buttonColorScheme = KColorScheme(QPalette::Active, KColorScheme::Button, colors);
+    viewColorScheme = KColorScheme(QPalette::Active, KColorScheme::View, colors);
     hasWallpapers = KStandardDirs::exists(KStandardDirs::locateLocal("data", "desktoptheme/" + theme + "/wallpapers/"));
 
     if (isDefault && writeSettings) {
@@ -598,6 +602,12 @@ QColor Theme::color(ColorRole role) const
         case ButtonBackgroundColor:
             return d->buttonColorScheme.background(KColorScheme::ActiveBackground).color();
             break;
+
+        case LinkColor:
+            return d->viewColorScheme.foreground(KColorScheme::LinkText).color();
+
+        case VisitedLinkColor:
+            return d->viewColorScheme.foreground(KColorScheme::VisitedText).color();
     }
 
     return QColor();

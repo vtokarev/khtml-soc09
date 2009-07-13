@@ -123,7 +123,11 @@ class QDBusError;
 		   Action=None
  *  </pre>
  *  These are the default settings for each notifiable event.
- *  Action is a bitmask of KNotification::NotifyPresentation
+ *  Action is the string representing the action. Actions can be added to
+ *  the KNotify daemon as plugins, by deriving from KNotifyPlugin.
+ *  At the time of writing, the following actions are available: Taskbar,
+ *  Sound, Popup, Logfile, KTTS, Execute.
+ *  Actions can be combined by seperating them with '|'.
  *
  *  Contexts is a comma separated list of possible context for this event.
  *
@@ -250,6 +254,7 @@ public:
 	 * default events you can use in the event function
 	 */
 	enum StandardEvent { Notification , Warning , Error , Catastrophe };
+
 	/**
 	 * Create a new notification.
 	 * 
@@ -266,6 +271,31 @@ public:
 	 * @param flags is a bitmask of NotificationFlag
 	 */
 	explicit KNotification(const QString & eventId , QWidget *widget=0L, const NotificationFlags &flags=CloseOnTimeout);
+
+	/**
+	 * Create a new notification.
+	 *
+	 * You have to use sendEvent to show the notification.
+	 *
+	 * The pointer is automatically deleted when the event is closed.
+	 *
+	 * Make sure you use one of the NotificationFlags CloseOnTimeOut or
+	 * CloseWhenWidgetActivated, if not,
+	 * you have to close the notification yourself.
+	 *
+	 * @since 4.4
+	 *
+	 * @param eventId is the name of the event
+	 * @param flags is a bitmask of NotificationFlag
+	 * @param parent parent object
+	 */
+	// KDE5: Clean up this mess
+	// Only this constructor should stay with saner argument order and
+	// defaults. Because of binary and source compatibility issues it has to
+	// stay this way for now. The second argument CANNOT have a default
+	// argument. if someone needs a widget associated with the notification he
+	// should use setWidget after creating the object (or some xyz_cast magic)
+	explicit KNotification(const QString & eventId , const NotificationFlags &flags, QObject *parent = NULL );
 
 	~KNotification();
 

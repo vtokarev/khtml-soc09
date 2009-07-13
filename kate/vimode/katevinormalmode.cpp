@@ -22,6 +22,8 @@
 #include "katevinormalmode.h"
 #include "katevivisualmode.h"
 #include "kateviinputmodemanager.h"
+#include "kateviglobal.h"
+#include "kateglobal.h"
 #include "katesmartmanager.h"
 #include "katesmartrange.h"
 #include "katebuffer.h"
@@ -45,7 +47,6 @@ KateViNormalMode::KateViNormalMode( KateViInputModeManager *viInputModeManager, 
 
   m_defaultRegister = '"';
   m_marks = new QMap<QChar, KTextEditor::SmartCursor*>;
-  m_keyParser = new KateViKeySequenceParser();
 
   m_timeoutlen = 1000; // FIXME: make configurable
   m_mappingKeyPress = false; // temporarily set to true when an aborted mapping sends key presses
@@ -59,7 +60,6 @@ KateViNormalMode::KateViNormalMode( KateViInputModeManager *viInputModeManager, 
 KateViNormalMode::~KateViNormalMode()
 {
   delete m_marks;
-  delete m_keyParser;
 }
 
 void KateViNormalMode::mappingTimerTimeOut()
@@ -91,16 +91,17 @@ bool KateViNormalMode::handleKeypress( const QKeyEvent *e )
     return true;
   }
 
-  QChar key = m_keyParser->KeyEventToQChar( keyCode, text, e->modifiers(), e->nativeScanCode() );
+  QChar key = KateViKeyParser::getInstance()->KeyEventToQChar( keyCode, text, e->modifiers(), e->nativeScanCode() );
 
   // check for matching mappings
   if ( !m_mappingKeyPress ) {
     m_mappingKeys.append( key );
 
-    foreach ( const QString &str, m_mappings.keys() ) {
+    foreach ( const QString &str, getMappings() ) {
       if ( str.startsWith( m_mappingKeys ) ) {
         if ( str == m_mappingKeys ) {
-          m_viInputModeManager->feedKeyPresses( m_mappings.value( str ) );
+          kDebug( 13070 ) << getMapping( str ) << " @@@@@@@@@@@@@@@@";
+          m_viInputModeManager->feedKeyPresses( getMapping( str ) );
           m_mappingTimer->stop();
           return true;
         } else {
@@ -108,16 +109,15 @@ bool KateViNormalMode::handleKeypress( const QKeyEvent *e )
           m_mappingTimer->setSingleShot( true );
           return true;
         }
-      } else {
-        m_mappingKeys.clear();
       }
     }
+    m_mappingKeys.clear();
   } else {
     // FIXME:
     //m_mappingKeyPress = false; // key press ignored wrt mappings, re-set m_mappingKeyPress
   }
 
-  m_keysVerbatim.append( m_keyParser->decodeKeySequence( key ) );
+  m_keysVerbatim.append( KateViKeyParser::getInstance()->decodeKeySequence( key ) );
 
   QChar c = QChar::Null;
   if ( m_keys.size() > 0 ) {
@@ -465,7 +465,7 @@ bool KateViNormalMode::commandEnterInsertModeAppendEOL()
   return startInsertMode();
 }
 
-bool KateViNormalMode::commandEnterInsertModeBeforeFirstCharacterOfLine()
+bool KateViNormalMode::commandEnterInsertModeBeforeFirstNonBlankInLine()
 {
   KTextEditor::Cursor cursor( m_view->cursorPosition() );
   QRegExp nonSpace( "\\S" );
@@ -519,6 +519,11 @@ bool KateViNormalMode::commandToOtherEnd()
   }
 
   return false;
+}
+
+bool KateViNormalMode::commandEnterReplaceMode()
+{
+  return startReplaceMode();
 }
 
 bool KateViNormalMode::commandDeleteLine()
@@ -853,9 +858,13 @@ bool KateViNormalMode::commandChange()
   if ( linewise ) {
     doc()->insertLine( m_commandRange.startLine, QString() );
     c.setLine( m_commandRange.startLine );
-    updateCursor( c );
+    c.setColumn(0);
   }
   doc()->editEnd();
+
+  if ( linewise ) {
+    updateCursor( c );
+  }
 
   commandEnterInsertMode();
 
@@ -1635,21 +1644,24 @@ KateViRange KateViNormalMode::motionToCharBackward()
 
 KateViRange KateViNormalMode::motionRepeatlastTF()
 {
-  m_keys = m_lastTFcommand;
-  if ( m_keys.at( 0 ) == 'f' ) {
-    return motionFindChar();
-  }
-  else if ( m_keys.at( 0 ) == 'F' ) {
-    return motionFindCharBackward();
-  }
-  else if ( m_keys.at( 0 ) == 't' ) {
-    return motionToChar();
-  }
-  else if ( m_keys.at( 0 ) == 'T' ) {
-    return motionToCharBackward();
+  if ( !m_lastTFcommand.isEmpty() ) {
+    m_keys = m_lastTFcommand;
+    if ( m_keys.at( 0 ) == 'f' ) {
+      return motionFindChar();
+    }
+    else if ( m_keys.at( 0 ) == 'F' ) {
+      return motionFindCharBackward();
+    }
+    else if ( m_keys.at( 0 ) == 't' ) {
+      return motionToChar();
+    }
+    else if ( m_keys.at( 0 ) == 'T' ) {
+      return motionToCharBackward();
+    }
   }
 
-  // should never happen
+  // there was no previous t/f command
+
   KateViRange r;
   r.valid = false;
 
@@ -1658,21 +1670,24 @@ KateViRange KateViNormalMode::motionRepeatlastTF()
 
 KateViRange KateViNormalMode::motionRepeatlastTFBackward()
 {
-  m_keys = m_lastTFcommand;
-  if ( m_keys.at( 0 ) == 'f' ) {
-    return motionFindCharBackward();
-  }
-  else if ( m_keys.at( 0 ) == 'F' ) {
-    return motionFindChar();
-  }
-  else if ( m_keys.at( 0 ) == 't' ) {
-    return motionToCharBackward();
-  }
-  else if ( m_keys.at( 0 ) == 'T' ) {
-    return motionToChar();
+  if ( !m_lastTFcommand.isEmpty() ) {
+    m_keys = m_lastTFcommand;
+    if ( m_keys.at( 0 ) == 'f' ) {
+      return motionFindCharBackward();
+    }
+    else if ( m_keys.at( 0 ) == 'F' ) {
+      return motionFindChar();
+    }
+    else if ( m_keys.at( 0 ) == 't' ) {
+      return motionToCharBackward();
+    }
+    else if ( m_keys.at( 0 ) == 'T' ) {
+      return motionToChar();
+    }
   }
 
-  // should never happen
+  // there was no previous t/f command
+
   KateViRange r;
   r.valid = false;
 
@@ -2143,7 +2158,7 @@ void KateViNormalMode::initializeCommands()
   m_commands.push_back( new KateViCommand( this, "a", &KateViNormalMode::commandEnterInsertModeAppend, IS_CHANGE ) );
   m_commands.push_back( new KateViCommand( this, "A", &KateViNormalMode::commandEnterInsertModeAppendEOL, IS_CHANGE ) );
   m_commands.push_back( new KateViCommand( this, "i", &KateViNormalMode::commandEnterInsertMode, IS_CHANGE ) );
-  m_commands.push_back( new KateViCommand( this, "I", &KateViNormalMode::commandEnterInsertModeBeforeFirstCharacterOfLine, IS_CHANGE ) );
+  m_commands.push_back( new KateViCommand( this, "I", &KateViNormalMode::commandEnterInsertModeBeforeFirstNonBlankInLine, IS_CHANGE ) );
   m_commands.push_back( new KateViCommand( this, "v", &KateViNormalMode::commandEnterVisualMode ) );
   m_commands.push_back( new KateViCommand( this, "V", &KateViNormalMode::commandEnterVisualLineMode ) );
 //m_commands.push_back( new KateViCommand( this, "<c-v>", &KateViNormalMode::commandEnterVisualBlockMode ) );
@@ -2170,6 +2185,7 @@ void KateViNormalMode::initializeCommands()
   m_commands.push_back( new KateViCommand( this, "p", &KateViNormalMode::commandPaste, IS_CHANGE ) );
   m_commands.push_back( new KateViCommand( this, "P", &KateViNormalMode::commandPasteBefore, IS_CHANGE ) );
   m_commands.push_back( new KateViCommand( this, "r.", &KateViNormalMode::commandReplaceCharacter, IS_CHANGE | REGEX_PATTERN ) );
+  m_commands.push_back( new KateViCommand( this, "R", &KateViNormalMode::commandEnterReplaceMode, IS_CHANGE ) );
   m_commands.push_back( new KateViCommand( this, ":", &KateViNormalMode::commandSwitchToCmdLine ) );
   m_commands.push_back( new KateViCommand( this, "/", &KateViNormalMode::commandSearch ) );
   m_commands.push_back( new KateViCommand( this, "u", &KateViNormalMode::commandUndo) );
@@ -2275,3 +2291,19 @@ QRegExp KateViNormalMode::generateMatchingItemRegex()
 
   return QRegExp( pattern );
 }
+
+void KateViNormalMode::addMapping( const QString &from, const QString &to )
+{
+    KateGlobal::self()->viInputModeGlobal()->addMapping( NormalMode, from, to );
+}
+
+const QString KateViNormalMode::getMapping( const QString &from ) const
+{
+    return KateGlobal::self()->viInputModeGlobal()->getMapping( NormalMode, from );
+}
+
+const QStringList KateViNormalMode::getMappings() const
+{
+    return KateGlobal::self()->viInputModeGlobal()->getMappings( NormalMode );
+}
+

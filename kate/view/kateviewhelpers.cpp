@@ -81,7 +81,7 @@ KateScrollBar::KateScrollBar (Qt::Orientation orientation, KateViewInternal* par
   : QScrollBar (orientation, parent->m_view)
   , m_middleMouseDown (false)
   , m_view(parent->m_view)
-  , m_doc(parent->m_doc)
+  , m_doc(parent->doc())
   , m_viewInternal(parent)
   , m_topMargin(0)
   , m_bottomMargin(0)
@@ -493,7 +493,7 @@ void KateCmdLineEdit::slotReturnPressed ( const QString& text )
           if (msg.length() > 0)
             setText (i18n ("Success: ") + msg);
           else
-            setText (i18n ("Success"));
+            m_bar->hide(); // always hide on success without message
         }
         else
         {
@@ -704,7 +704,7 @@ const int halfIPW = 8;
 KateIconBorder::KateIconBorder ( KateViewInternal* internalView, QWidget *parent )
   : QWidget(parent)
   , m_view( internalView->m_view )
-  , m_doc( internalView->m_doc )
+  , m_doc( internalView->doc() )
   , m_viewInternal( internalView )
   , m_iconBorderOn( false )
   , m_lineNumbersOn( false )
@@ -717,7 +717,9 @@ KateIconBorder::KateIconBorder ( KateViewInternal* internalView, QWidget *parent
   , iconPaneWidth (16)
   , m_annotationBorderWidth (6)
   , m_foldingRange(0)
-  , m_lastBlockLine(-1)
+  , m_nextHighlightBlock(-2)
+  , m_currentBlockLine(-1)
+  , m_delayFoldingHlTimer(new QTimer())
 {
   initializeFoldingColors();
 
@@ -728,6 +730,10 @@ KateIconBorder::KateIconBorder ( KateViewInternal* internalView, QWidget *parent
   m_doc->setMarkPixmap( MarkInterface::markType01, KIcon("bookmarks").pixmap(16, 16) );
 
   updateFont();
+
+  m_delayFoldingHlTimer->setSingleShot(true);
+  m_delayFoldingHlTimer->setInterval(250);
+  connect(m_delayFoldingHlTimer, SIGNAL(timeout()), this, SLOT(showBlock()));
 }
 
 void KateIconBorder::initializeFoldingColors()
@@ -755,7 +761,11 @@ void KateIconBorder::initializeFoldingColors()
 }
 
 
-KateIconBorder::~KateIconBorder() {delete m_foldingRange;}
+KateIconBorder::~KateIconBorder()
+{
+  delete m_foldingRange;
+  m_foldingRange = 0;
+}
 
 void KateIconBorder::setIconBorderOn( bool enable )
 {
@@ -1260,25 +1270,40 @@ void KateIconBorder::mousePressEvent( QMouseEvent* e )
   QWidget::mousePressEvent(e);
 }
 
-void KateIconBorder::showBlock(int line)
+void KateIconBorder::showDelayedBlock(int line)
 {
-  if (line == m_lastBlockLine) return;
-  m_lastBlockLine = line;
+  // save the line over which the mouse hovers
+  // either we start the timer for delay, or we show the block immediately
+  // if the smart range already exists
+  m_nextHighlightBlock = line;
+  if (!m_foldingRange) {
+    if (!m_delayFoldingHlTimer->isActive()) {
+      m_delayFoldingHlTimer->start();
+    }
+  } else {
+    showBlock();
+  }
+}
+
+void KateIconBorder::showBlock()
+{
+  if (m_nextHighlightBlock == m_currentBlockLine) return;
+  m_currentBlockLine = m_nextHighlightBlock;
 
   // get the new range, that should be highlighted
   KTextEditor::Range newRange = KTextEditor::Range::invalid();
   KateCodeFoldingTree *tree = m_doc->foldingTree();
   if (tree) {
-    KateCodeFoldingNode *node = tree->findNodeForLine(line);
+    KateCodeFoldingNode *node = tree->findNodeForLine(m_currentBlockLine);
     KTextEditor::Cursor beg;
     KTextEditor::Cursor end;
     if (node != tree->rootNode () && node->getBegin(tree, &beg) && node->getEnd(tree, &end)) {
       newRange = KTextEditor::Range(beg, end);
     }
     KateLineInfo info;
-    tree->getLineInfo(&info,line);
+    tree->getLineInfo(&info, m_currentBlockLine);
     if ((info.startsVisibleBlock)){
-      node=tree->findNodeStartingAt(line);
+      node=tree->findNodeStartingAt(m_currentBlockLine);
       if (node) {
         if (node != tree->rootNode () && node->getBegin(tree, &beg) && node->getEnd(tree, &end)) {
           newRange = KTextEditor::Range(beg, end);
@@ -1301,14 +1326,20 @@ void KateIconBorder::showBlock(int line)
     m_foldingRange = m_doc->newSmartRange(newRange);
     static_cast<KateSmartRange*>(m_foldingRange)->setInternal();
     KTextEditor::Attribute::Ptr attr(new KTextEditor::Attribute());
-    attr->setBackground(foldingColor(0, line, false));
+    attr->setBackground(foldingColor(0, m_currentBlockLine, false));
     m_foldingRange->setAttribute(attr);
     m_doc->addHighlightToView(m_view, m_foldingRange, false);
   }
 }
 
-void KateIconBorder::hideBlock() {
-  m_lastBlockLine=-1;
+void KateIconBorder::hideBlock()
+{
+  if (m_delayFoldingHlTimer->isActive()) {
+    m_delayFoldingHlTimer->stop();
+  }
+
+  m_nextHighlightBlock = -2;
+  m_currentBlockLine = -1;
   delete m_foldingRange;
   m_foldingRange = 0;
 }
@@ -1325,7 +1356,7 @@ void KateIconBorder::mouseMoveEvent( QMouseEvent* e )
 {
   const KateTextLayout& t = m_viewInternal->yToKateTextLayout(e->y());
   if (t.isValid()) {
-    if ( positionToArea( e->pos() ) == FoldingMarkers) showBlock(t.line());
+    if ( positionToArea( e->pos() ) == FoldingMarkers) showDelayedBlock(t.line());
     else hideBlock();
     if ( positionToArea( e->pos() ) == AnnotationBorder )
     {
@@ -1592,11 +1623,11 @@ class KateViewEncodingAction::Private
     currentSubAction(0)
     {
     }
-    
+
     void init(bool);
-    
+
     void _k_subActionTriggered(QAction*);
-    
+
     KateViewEncodingAction *q;
     QAction *defaultAction;
     QAction *currentSubAction;
@@ -1610,14 +1641,14 @@ bool lessThanAction(KSelectAction *a, KSelectAction *b)
 void KateViewEncodingAction::Private::init(bool showAutoOptions)
 {
   QList<KSelectAction *> actions;
-  
+
   q->setToolBarMode(MenuMode);
   defaultAction = q->addAction(i18nc("Encodings menu", "Disabled"));
   defaultAction->setData(QVariant((uint)KEncodingProber::None));
-  
+
   QAction *tmp = q->addAction(i18nc("Encodings menu", "Autodetect"));
   tmp->setData(QVariant((uint)KEncodingProber::Universal));
-  
+
   q->menu()->addSeparator();
 
   int i;
@@ -1712,21 +1743,21 @@ KEncodingProber::ProberType KateViewEncodingAction::currentProberType() const
 bool KateViewEncodingAction::setCurrentProberType(KEncodingProber::ProberType scri)
 {
     int i;
-    
-    if (scri == KEncodingProber::None) 
+
+    if (scri == KEncodingProber::None)
     {
       d->currentSubAction=actions().at(0);
       d->currentSubAction->trigger();
       return true;
     }
-    
-    if (scri == KEncodingProber::Universal) 
+
+    if (scri == KEncodingProber::Universal)
     {
       d->currentSubAction=actions().at(1);
       d->currentSubAction->trigger();
       return true;
     }
-    
+
     for (i=2;i<actions().size();++i)
     {
       if (actions().at(i)->menu())
@@ -1748,11 +1779,11 @@ bool KateViewEncodingAction::setCurrentProberType(KEncodingProber::ProberType sc
 int KateViewEncodingAction::mibForName(const QString &codecName, bool *ok) const
 {
   // FIXME logic is good but code is ugly
-  
+
   bool success = false;
   int mib = MIB_DEFAULT;
   KCharsets *charsets = KGlobal::charsets();
-  
+
   if (codecName == d->defaultAction->text())
     success = true;
   else
@@ -1763,17 +1794,17 @@ int KateViewEncodingAction::mibForName(const QString &codecName, bool *ok) const
       // Maybe we got a description name instead
       codec = charsets->codecForName(charsets->encodingForName(codecName), success);
     }
-    
+
     if (codec)
       mib = codec->mibEnum();
   }
-  
+
   if (ok)
     *ok = success;
-  
+
   if (success)
     return mib;
-  
+
   kWarning() << "Invalid codec name: "  << codecName;
   return MIB_DEFAULT;
 }
@@ -1798,7 +1829,7 @@ bool KateViewEncodingAction::setCurrentCodec( QTextCodec *codec )
 {
   if (!codec)
     return false;
-  
+
   int i,j;
   for (i=2;i<actions().size();++i)
   {
@@ -1818,7 +1849,7 @@ bool KateViewEncodingAction::setCurrentCodec( QTextCodec *codec )
     }
   }
   return false;
-  
+
 }
 
 QString KateViewEncodingAction::currentCodecName() const

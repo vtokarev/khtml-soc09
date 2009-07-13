@@ -49,9 +49,10 @@ class KateViModeBase : public QObject
      * @return normal mode command accumulated so far
      */
     QString getVerbatimKeys() const;
-    void addMapping( const QString &from, const QString &to );
-    const QString getMapping( const QString &from ) const;
-    const QStringList getMappings() const;
+
+    virtual void addMapping( const QString &from, const QString &to ) = 0;
+    virtual const QString getMapping( const QString &from ) const = 0;
+    virtual const QStringList getMappings() const = 0;
 
   protected:
     // helper methods
@@ -71,6 +72,7 @@ class KateViModeBase : public QObject
     KateViRange findSurrounding( const QRegExp &c1, const QRegExp &c2, bool inner = false ) const;
     int findLineStartingWitchChar( const QChar &c, unsigned int count, bool forward = true ) const;
     void updateCursor( const KTextEditor::Cursor &c ) const;
+    const QChar getCharAtVirtualColumn( QString &line, int virtualColumn, int tabWidht ) const;
 
     KateViRange goLineUp();
     KateViRange goLineDown();
@@ -86,6 +88,7 @@ class KateViModeBase : public QObject
     bool startVisualMode();
     bool startVisualLineMode();
     bool startVisualBlockMode();
+    bool startReplaceMode();
 
     void error( const QString &errorMsg ) const;
     void message( const QString &msg ) const;
@@ -109,7 +112,6 @@ class KateViModeBase : public QObject
     // key mappings
     int m_timeoutlen; // time to wait for the next keypress of a multi-key mapping (default: 1000 ms)
     QTimer *m_mappingTimer;
-    QHash <QString, QString> m_mappings;
 
     KateView *m_view;
     KateViewInternal *m_viewInternal;

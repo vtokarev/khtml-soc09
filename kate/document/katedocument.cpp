@@ -45,6 +45,8 @@
 #include "katebuffer.h"
 #include "kateundomanager.h"
 #include "katepartpluginmanager.h"
+#include "katevireplacemode.h"
+#include "spellcheck/spellcheck.h"
 
 #include <kio/job.h>
 #include <kio/jobuidelegate.h>
@@ -240,6 +242,7 @@ KateDocument::KateDocument ( bool bSingleViewMode, bool bBrowserView,
 
   // some nice signals from the buffer
   connect(m_buffer, SIGNAL(tagLines(int,int)), this, SLOT(tagLines(int,int)));
+  connect(m_buffer, SIGNAL(respellCheckBlock(int, int)), this , SLOT(respellCheckBlock(int, int)));
   connect(m_buffer, SIGNAL(codeFoldingUpdated()),this,SIGNAL(codeFoldingUpdated()));
 
   // if the user changes the highlight with the dialog, notify the doc
@@ -1154,9 +1157,9 @@ bool KateDocument::editInsertText ( int line, int col, const QString &s, Kate::E
 
   m_buffer->changeLine(line);
 
-  history()->doEdit( new KateEditInfo(m_editSources.top(), KTextEditor::Range(line, col, line, col), QStringList(), KTextEditor::Range(line, col, line, col + s.length()), QStringList(s)) );
   emit KTextEditor::Document::textInserted(this, KTextEditor::Range(line, col, line, col + s.length()));
-
+  history()->doEdit( new KateEditInfo(m_editSources.top(), KTextEditor::Range(line, col, line, col), QStringList(), KTextEditor::Range(line, col, line, col + s.length()), QStringList(s)) );
+  
   editEnd();
 
   return true;
@@ -3150,9 +3153,9 @@ bool KateDocument::openFile()
 
   bool success = m_buffer->openFile (localFilePath());
 
-  emit KTextEditor::Document::textInserted(this, documentRange());
   history()->doEdit( new KateEditInfo(Kate::OpenFileEdit, KTextEditor::Range(0,0,0,0), QStringList(), documentRange(), QStringList()) );
-
+  emit KTextEditor::Document::textInserted(this, documentRange());
+  
   //
   // yeah, success
   //
@@ -3827,8 +3830,20 @@ bool KateDocument::typeChars ( KateView *view, const QString &chars )
 
   KTextEditor::Cursor oldCur (view->cursorPosition());
 
-  if (config()->configFlags()  & KateDocumentConfig::cfOvr)
-    removeText(KTextEditor::Range(view->cursorPosition(), qMin(buf.length(), textLine->length() - view->cursorPosition().column())));
+  if (config()->configFlags() & KateDocumentConfig::cfOvr
+      || (view->viInputMode() && view->getViInputModeManager()->getCurrentViMode() == ReplaceMode)) {
+
+    KTextEditor::Range r = KTextEditor::Range(view->cursorPosition(), qMin(buf.length(),
+          textLine->length() - view->cursorPosition().column()));
+
+    // replace mode needs to know what was removed so it can be restored with backspace
+    if (view->viInputMode() && view->getViInputModeManager()->getCurrentViMode() == ReplaceMode) {
+      QChar removed = line( view->cursorPosition().line() ).at( r.start().column() );
+      view->getViInputModeManager()->getViReplaceMode()->overwrittenChar( removed );
+    }
+
+    removeText(r);
+  }
 
   insertText(view->cursorPosition(), buf);
   if (bracketInserted)
@@ -4026,6 +4041,25 @@ void KateDocument::paste ( KateView* view, QClipboard::Mode mode )
     view->removeSelectedText();
 
   KTextEditor::Cursor pos = view->cursorPosition();
+
+  if (config()->configFlags() & KateDocumentConfig::cfOvr) {
+    QStringList pasteLines = s.split(QLatin1Char('\n'));
+
+    if (!view->blockSelectionMode()) {
+      int endColumn = (pasteLines.count() == 1 ? pos.column() : 0) + pasteLines.last().length();
+      removeText(KTextEditor::Range(pos,
+                                    pos.line()+pasteLines.count()-1, endColumn));
+    } else {
+      int maxi = qMin(pos.line() + pasteLines.count(), this->lines());
+
+      for (int i = pos.line(); i < maxi; ++i) {
+        int pasteLength = pasteLines[i-pos.line()].length();
+        removeText(KTextEditor::Range(i, pos.column(), 
+                                      i, qMin(pasteLength + pos.column(), lineLength(i))));
+      }
+    }
+  }
+
 
   blockRemoveTrailingSpaces(true);
   insertText(pos, s, view->blockSelectionMode());
@@ -5191,6 +5225,9 @@ void KateDocument::updateConfig ()
   // update all views, does tagAll and updateView...
   foreach (KateView * view, m_views)
     view->updateDocumentConfig ();
+  
+  // update on-the-fly spell checking as spell checking defaults might have changes
+  KateGlobal::self()->spellCheckManager()->updateOnTheFlySpellChecking(this);
 }
 
 //BEGIN Variable reader
@@ -6168,6 +6205,40 @@ bool KateDocument::saveAs( const KUrl &url ) {
   m_saveAs = true;
   return KTextEditor::Document::saveAs(url);
 }
+
+QString KateDocument::dictionary()
+{
+  return m_dictionary;
+}
+
+QList<QPair<KTextEditor::SmartRange*, QString> > KateDocument::dictionaryRanges()
+{
+  return m_dictionaryRanges;
+}
+
+void KateDocument::setDictionary(const QString& dict)
+{
+  if(m_dictionary == dict) {
+    return;
+  }
+  m_dictionary = dict;
+  KateGlobal::self()->spellCheckManager()->onTheFlyCheckDocument(this);
+}
+
+
+void KateDocument::onTheFlySpellCheckingEnabled(bool enable) {
+  config()->setOnTheFlySpellCheck(enable);
+  KateGlobal::self()->spellCheckManager()->setOnTheFlySpellCheckEnabled(this,enable);
+  foreach( KateView* view, m_views)
+  {
+    view->slotOnTheFlySpellCheckingChanged ();
+  }
+}
+
+bool KateDocument::isOnTheFlySpellCheckingEnabled() {
+  return config()->onTheFlySpellCheck();
+}
+
 
 // Kill our helpers again
 #ifdef FAST_DEBUG_ENABLE

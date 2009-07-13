@@ -1,4 +1,5 @@
 /* This file is part of the KDE libraries
+   Copyright (C) 2009 Michel Ludwig <michel.ludwig@kdemail.net>
    Copyright (C) 2007 Mirko Stocker <me@misto.ch>
    Copyright (C) 2003 Hamish Rodda <rodda@kde.org>
    Copyright (C) 2002 John Firebaugh <jfirebaugh@kde.org>
@@ -31,6 +32,7 @@
 #include "katedocument.h"
 #include "katedocumenthelpers.h"
 #include "kateglobal.h"
+#include "kateviglobal.h"
 #include "katehighlight.h"
 #include "katehighlightmenu.h"
 #include "katehtmlexporter.h"
@@ -51,6 +53,7 @@
 #include "katepartpluginmanager.h"
 #include "katewordcompletion.h"
 #include "katelayoutcache.h"
+#include "spellcheck/spellcheck.h"
 
 #include <ktexteditor/cursorfeedback.h>
 
@@ -116,6 +119,7 @@ KateView::KateView( KateDocument *doc, QWidget *parent )
     , m_searchBar (0)
     , m_viModeBar (0)
     , m_gotoBar (0)
+    , m_dictionaryBar(NULL)
 {
 
   setComponentData ( KateGlobal::self()->componentData () );
@@ -138,7 +142,7 @@ KateView::KateView( KateDocument *doc, QWidget *parent )
 
   m_renderer = new KateRenderer(doc, this);
 
-  m_viewInternal = new KateViewInternal( this, doc );
+  m_viewInternal = new KateViewInternal( this );
 
   // ugly workaround:
   // Force the layout to be left-to-right even on RTL deskstop, as discussed
@@ -601,6 +605,18 @@ void KateView::setupActions()
   a->setWhatsThis(i18n("Look up a piece of text or regular expression and replace the result with some given text."));
 
   m_spell->createActions( ac );
+  m_toggleOnTheFlySpellCheck = new KToggleAction(i18n("On-The-Fly Spellcheck"), this);
+  m_toggleOnTheFlySpellCheck->setWhatsThis(i18n("Enable/disable on-the-fly spell checking"));
+  m_toggleOnTheFlySpellCheck->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_O));
+  connect(m_toggleOnTheFlySpellCheck, SIGNAL(triggered(bool)), SLOT(toggleOnTheFlySpellCheck(bool)));
+  ac->addAction("tools_toggle_onthefly_spelling", m_toggleOnTheFlySpellCheck);
+
+  a = ac->addAction("tools_change_dictionary");
+  a->setText(i18n("Change dictionary..."));
+  a->setWhatsThis(i18n("Change the dictionary that is used for spell checking."));
+  connect(a, SIGNAL(triggered()), SLOT(changeDictionary()));
+  
+  KateGlobal::self()->spellCheckManager()->createActions(ac);
 
   if (!m_doc->simpleMode ())
     m_bookmarks->createActions( ac );
@@ -748,14 +764,14 @@ void KateView::setupEditActions()
 
 
   a = ac->addAction("move_cursor_right");
-  a->setText(i18n("Move Character Right"));
+  a->setText(i18n("Move Cursor Right"));
   a->setShortcut(QKeySequence(Qt::Key_Right));
   connect(a, SIGNAL(triggered(bool)), SLOT(cursorRight()));
   m_editActions << a;
 
 
   a = ac->addAction("move_cusor_left");
-  a->setText(i18n("Move Character Left"));
+  a->setText(i18n("Move Cursor Left"));
   a->setShortcut(QKeySequence(Qt::Key_Left));
   connect(a, SIGNAL(triggered(bool)), SLOT(cursorLeft()));
   m_editActions << a;
@@ -1012,6 +1028,10 @@ void KateView::reloadFile()
   m_doc->documentReload();
 }
 
+void KateView::slotOnTheFlySpellCheckingChanged(){
+    m_toggleOnTheFlySpellCheck->setChecked(m_doc->isOnTheFlySpellCheckingEnabled());
+}
+
 void KateView::slotReadWriteChanged ()
 {
   if ( m_toggleWriteLock )
@@ -1112,6 +1132,12 @@ void KateView::gotoLine()
   m_bottomViewBar->showBarWidget(gotoBar());
 }
 
+void KateView::changeDictionary()
+{
+  dictionaryBar()->updateData();
+  m_bottomViewBar->showBarWidget(dictionaryBar());
+}
+
 void KateView::joinLines()
 {
   int first = selectionRange().start().line();
@@ -1128,12 +1154,22 @@ void KateView::joinLines()
 void KateView::readSessionConfig(const KConfigGroup& config)
 {
   setCursorPositionInternal(KTextEditor::Cursor(config.readEntry("CursorLine",0), config.readEntry("CursorColumn",0)));
+
+  // save vi registers if there are registers with contents
+  if ( KateGlobal::self()->viInputModeGlobal()->getRegisters()->size() > 0 ) {
+    getViInputModeManager()->readSessionConfig( config );
+  }
 }
 
 void KateView::writeSessionConfig(KConfigGroup& config)
 {
   config.writeEntry("CursorLine",m_viewInternal->m_cursor.line());
   config.writeEntry("CursorColumn",m_viewInternal->m_cursor.column());
+
+  // save vi registers if there are registers with contents
+  if ( KateGlobal::self()->viInputModeGlobal()->getRegisters()->size() > 0 ) {
+    getViInputModeManager()->writeSessionConfig( config );
+  }
 }
 
 int KateView::getEol() const
@@ -1442,6 +1478,8 @@ void KateView::updateConfig ()
   // whether vi input mode should override actions or not
   m_viewInternal->m_viInputModeStealKeys = config()->viInputModeStealKeys();
   
+  m_toggleOnTheFlySpellCheck->setChecked(m_doc->isOnTheFlySpellCheckingEnabled());
+  
   // register/unregister word completion...
   unregisterCompletionModel (KateGlobal::self()->wordCompletionModel());
   if (config()->wordCompletion ())
@@ -1449,7 +1487,7 @@ void KateView::updateConfig ()
 
   // now redraw...
   {
-    QMutexLocker lock(m_viewInternal->m_doc->smartMutex());
+    QMutexLocker lock(m_doc->smartMutex());
     m_viewInternal->cache()->clear();
   }
   tagAll ();
@@ -1476,7 +1514,7 @@ void KateView::updateDocumentConfig()
 
   // now redraw...
   {
-    QMutexLocker lock(m_viewInternal->m_doc->smartMutex());
+    QMutexLocker lock(m_doc->smartMutex());
     m_viewInternal->cache()->clear();
   }
   tagAll ();
@@ -1495,7 +1533,7 @@ void KateView::updateRendererConfig()
 
   // now redraw...
   {
-    QMutexLocker lock(m_viewInternal->m_doc->smartMutex());
+    QMutexLocker lock(m_doc->smartMutex());
     m_viewInternal->cache()->clear();
   }
   tagAll ();
@@ -1905,7 +1943,7 @@ bool KateView::toggleBlockSelectionMode ()
   return setBlockSelectionMode (!blockSelect);
 }
 
-bool KateView::wrapCursor ()
+bool KateView::wrapCursor () const
 {
   return !blockSelectionMode() && (m_doc->config()->configFlags() & KateDocumentConfig::cfWrapCursor);
 }
@@ -1954,8 +1992,9 @@ void KateView::rangeDeleted( KTextEditor::SmartRange * range )
 
 void KateView::addExternalHighlight( KTextEditor::SmartRange * topRange, bool supportDynamic )
 {
-  if (m_externalHighlights.contains(topRange))
+  if(m_externalHighlights.contains(topRange)) {
     return;
+  }
 
   m_externalHighlights.append(topRange);
 
@@ -1972,9 +2011,9 @@ void KateView::addExternalHighlight( KTextEditor::SmartRange * topRange, bool su
 
 void KateView::removeExternalHighlight( KTextEditor::SmartRange * topRange )
 {
-  if (!m_externalHighlights.contains(topRange))
+  if(!m_externalHighlights.contains(topRange)) {
     return;
-
+  }
   m_externalHighlights.removeAll(topRange);
 
   if (!m_actions.contains(topRange))
@@ -1988,9 +2027,9 @@ void KateView::removeExternalHighlight( KTextEditor::SmartRange * topRange )
   m_viewInternal->removeHighlightRange(topRange);
 }
 
-const QList< KTextEditor::SmartRange * > & KateView::externalHighlights( ) const
+const QList< KTextEditor::SmartRange *>& KateView::externalHighlights() const
 {
-  return m_externalHighlights;
+    return m_externalHighlights;
 }
 
 void KateView::addActions( KTextEditor::SmartRange * topRange )
@@ -2595,6 +2634,16 @@ KateGotoBar *KateView::gotoBar ()
   return m_gotoBar;
 }
 
+KateDictionaryBar *KateView::dictionaryBar ()
+{
+  if(!m_dictionaryBar) {
+    m_dictionaryBar = new KateDictionaryBar(this);
+    m_bottomViewBar->addBarWidget(m_dictionaryBar);
+  }
+
+  return m_dictionaryBar;
+}
+
 void KateView::setAnnotationModel( KTextEditor::AnnotationModel* model )
 {
   KTextEditor::AnnotationModel* oldmodel = m_annotationModel;
@@ -2615,6 +2664,20 @@ void KateView::setAnnotationBorderVisible( bool visible )
 bool KateView::isAnnotationBorderVisible() const
 {
   return m_viewInternal->m_leftBorder->annotationBorderOn();
+}
+
+KTextEditor::Range KateView::visibleRange()
+{
+  //ensure that the view is up-to-date, otherwise 'endPos()' might fail!
+  m_viewInternal->updateView();
+  return KTextEditor::Range(m_viewInternal->startPos(), m_viewInternal->endPos());
+}
+
+
+void KateView::toggleOnTheFlySpellCheck(bool b)
+{
+  m_doc->onTheFlySpellCheckingEnabled(b);
+  
 }
 
 // kate: space-indent on; indent-width 2; replace-tabs on;

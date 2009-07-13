@@ -62,8 +62,8 @@ class KTranscriptImp : public KTranscript
 
     QString eval (const QList<QVariant> &argv,
                   const QString &lang,
-                  const QString &modf,
                   const QString &ctry,
+                  const QString &modf,
                   const QString &msgctxt,
                   const QHash<QString, QString> &dynctxt,
                   const QString &msgid,
@@ -179,8 +179,8 @@ class Scriptface : public JSObject
     const QStringList *subs;
     const QList<QVariant> *vals;
     const QString *final;
-    const QString *modf;
     const QString *ctry;
+    const QString *modf;
 
     // Fallback request handle.
     bool *fallback;
@@ -459,8 +459,8 @@ KTranscriptImp::~KTranscriptImp ()
 
 QString KTranscriptImp::eval (const QList<QVariant> &argv,
                               const QString &lang,
-                              const QString &modf,
                               const QString &ctry,
+                              const QString &modf,
                               const QString &msgctxt,
                               const QHash<QString, QString> &dynctxt,
                               const QString &msgid,
@@ -520,8 +520,8 @@ QString KTranscriptImp::eval (const QList<QVariant> &argv,
     sface->vals = &vals;
     sface->final = &final;
     sface->fallback = &fallback;
-    sface->modf = &modf;
     sface->ctry = &ctry;
+    sface->modf = &modf;
 
     // Find corresponding JS function.
     int argc = argv.size();
@@ -1061,7 +1061,7 @@ JSValue *Scriptface::msgidf (ExecState *exec)
 JSValue *Scriptface::msgkeyf (ExecState *exec)
 {
     Q_UNUSED(exec);
-    return jsString(*msgctxt + '|' + *msgid);
+    return jsString(QString(*msgctxt + '|' + *msgid));
 }
 
 JSValue *Scriptface::msgstrff (ExecState *exec)

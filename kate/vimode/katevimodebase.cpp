@@ -24,6 +24,7 @@
 #include "kateviglobal.h"
 #include "katevivisualmode.h"
 #include "katevinormalmode.h"
+#include "katevireplacemode.h"
 #include "kateviinputmodemanager.h"
 
 #include <QString>
@@ -693,6 +694,15 @@ bool KateViModeBase::startInsertMode()
   return true;
 }
 
+bool KateViModeBase::startReplaceMode()
+{
+  m_view->doc()->setMergeAllEdits(true);
+  m_viInputModeManager->viEnterReplaceMode();
+  m_view->updateViModeBarMode();
+
+  return true;
+}
+
 bool KateViModeBase::startVisualMode()
 {
   if ( m_view->getCurrentViMode() == VisualLineMode ) {
@@ -753,22 +763,30 @@ QString KateViModeBase::getVerbatimKeys() const
   return m_keysVerbatim;
 }
 
-void KateViModeBase::addMapping( const QString &from, const QString &to )
+const QChar KateViModeBase::getCharAtVirtualColumn( QString &line, int virtualColumn,
+    int tabWidth ) const
 {
-    m_mappings[from] = to;
-}
+  int column = 0;
+  int tempCol = 0;
 
-const QString KateViModeBase::getMapping( const QString &from ) const
-{
-    return m_mappings[from];
-}
-
-const QStringList KateViModeBase::getMappings() const
-{
-    QStringList l;
-    foreach ( const QString &str, m_mappings.keys() ) {
-      l << str;
+  while ( tempCol < virtualColumn ) {
+    if ( line.at( column ) == '\t' ) {
+      tempCol += tabWidth - ( tempCol % tabWidth );
+    } else {
+      tempCol++;
     }
 
-    return l;
+    if ( tempCol <= virtualColumn ) {
+      column++;
+
+      if ( column >= line.length() ) {
+        return QChar::Null;
+      }
+    }
+  }
+
+  if ( line.length() > column )
+    return line.at( column );
+
+  return QChar::Null;
 }

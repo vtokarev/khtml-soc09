@@ -1,5 +1,5 @@
 /* This file is part of the KDE libraries
- * Copyright (C) 2008 Erlend Hamberg <ehamberg@gmail.com>
+ * Copyright (C) 2008-2009 Erlend Hamberg <ehamberg@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -18,7 +18,9 @@
  */
 
 #include "kateviglobal.h"
+#include "katevikeyparser.h"
 
+#include "kconfiggroup.h"
 #include "kdebug.h"
 #include <QApplication>
 #include <QClipboard>
@@ -33,6 +35,32 @@ KateViGlobal::~KateViGlobal()
 {
   delete m_numberedRegisters;
   delete m_registers;
+}
+
+void KateViGlobal::writeConfig( KConfigGroup &config ) const
+{
+  config.writeEntry( "Normal Mode Mapping Keys", getMappings( NormalMode, true ) );
+  QStringList l;
+  foreach( const QString &s, getMappings( NormalMode ) ) {
+    l << KateViKeyParser::getInstance()->decodeKeySequence( getMapping( NormalMode, s ) );
+  }
+  config.writeEntry( "Normal Mode Mappings", l );
+}
+
+void KateViGlobal::readConfig( const KConfigGroup &config )
+{
+    QStringList keys = config.readEntry( "Normal Mode Mapping Keys", QStringList() );
+    QStringList mappings = config.readEntry( "Normal Mode Mappings", QStringList() );
+
+    // sanity check
+    if ( keys.length() == mappings.length() ) {
+      for ( int i = 0; i < keys.length(); i++ ) {
+        addMapping( NormalMode, keys.at( i ), mappings.at( i ) );
+        kDebug( 13070 ) << "Mapping " << keys.at( i ) << " -> " << mappings.at( i );
+      }
+    } else {
+      kDebug( 13070 ) << "Error when reading mappings from config: number of keys != number of values";
+    }
 }
 
 QString KateViGlobal::getRegisterContent( const QChar &reg ) const
@@ -95,3 +123,64 @@ void KateViGlobal::fillRegister( const QChar &reg, const QString &text )
   }
 }
 
+void KateViGlobal::addMapping( ViMode mode, const QString &from, const QString &to )
+{
+  if ( !from.isEmpty() ) {
+    switch ( mode ) {
+    case NormalMode:
+      m_normalModeMappings[ KateViKeyParser::getInstance()->encodeKeySequence( from ) ]
+        = KateViKeyParser::getInstance()->encodeKeySequence( to );
+      break;
+    default:
+      kDebug( 13070 ) << "Mapping not supported for given mode";
+    }
+  }
+}
+
+const QString KateViGlobal::getMapping( ViMode mode, const QString &from, bool decode ) const
+{
+    QString ret;
+    switch ( mode ) {
+    case NormalMode:
+      ret = m_normalModeMappings.value( from );
+      break;
+    default:
+      kDebug( 13070 ) << "Mapping not supported for given mode";
+    }
+
+    if ( decode ) {
+      return KateViKeyParser::getInstance()->decodeKeySequence( ret );
+    }
+    return ret;
+}
+
+const QStringList KateViGlobal::getMappings( ViMode mode, bool decode ) const
+{
+  QStringList l;
+  switch (mode ) {
+  case NormalMode:
+    foreach ( const QString &str, m_normalModeMappings.keys() ) {
+      if ( decode ) {
+        l << KateViKeyParser::getInstance()->decodeKeySequence( str );
+      } else {
+        l << str;
+      }
+    }
+    break;
+  default:
+    kDebug( 13070 ) << "Mapping not supported for given mode";
+  }
+
+  return l;
+}
+
+void KateViGlobal::clearMappings( ViMode mode )
+{
+  switch (mode ) {
+  case NormalMode:
+    m_normalModeMappings.clear();
+    break;
+  default:
+    kDebug( 13070 ) << "Mapping not supported for given mode";
+  }
+}

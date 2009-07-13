@@ -4,6 +4,7 @@
    Copyright (C) 2001 Joseph Wenninger <jowenn@kde.org>
    Copyright (C) 2006 Dominik Haumann <dhdev@gmx.de>
    Copyright (C) 2007 Mirko Stocker <me@misto.ch>
+   Copyright (C) 2009 Michel Ludwig <michel.ludwig@kdemail.net>
 
    Based on work of:
      Copyright (C) 1999 Jochen Wilhelmy <digisnap@cs.tu-berlin.de>
@@ -37,6 +38,9 @@
 #include <kdialog.h>
 #include <kmimetype.h>
 
+#include <sonnet/configwidget.h>
+#include <sonnet/dictionarycombobox.h>
+
 #include <QtCore/QStringList>
 #include <QtGui/QColor>
 #include <QtGui/QTabWidget>
@@ -60,13 +64,13 @@ class KComboBox;
 class KShortcutsEditor;
 class KTemporaryFile;
 class KIntNumInput;
+class KIntSpinBox;
 class KPluginSelector;
 class KPluginInfo;
 class KProcess;
 
 class QCheckBox;
 class QLabel;
-class QSpinBox;
 class QToolButton;
 class QCheckBox;
 class QKeyEvent;
@@ -82,6 +86,7 @@ namespace Ui
   class OpenSaveConfigAdvWidget;
   class CompletionConfigTab;
   class ViInputModeConfigWidget;
+  class SpellCheckConfigWidget;
 }
 
 class KateConfigPage : public KTextEditor::ConfigPage
@@ -122,8 +127,23 @@ class KateGotoBar : public KateViewBarWidget
 
   private:
     KateView* m_view;
-    QSpinBox *gotoRange;
+    KIntSpinBox *gotoRange;
     QToolButton *btnOK;
+};
+
+class KateDictionaryBar : public KateViewBarWidget
+{
+  Q_OBJECT
+
+  public:
+    explicit KateDictionaryBar(KateView *view, QWidget *parent = NULL);
+    virtual ~KateDictionaryBar();
+
+    void updateData();
+
+  private:
+    KateView* m_view;
+    Sonnet::DictionaryComboBox *m_dictionaryComboBox;
 };
 
 class KateIndentConfigTab : public KateConfigPage
@@ -168,6 +188,24 @@ class KateCompletionConfigTab : public KateConfigPage
     void showWhatsThis(const QString& text);
 };
 
+class KateEditGeneralConfigTab : public KateConfigPage
+{
+  Q_OBJECT
+
+  public:
+    KateEditGeneralConfigTab(QWidget *parent);
+    ~KateEditGeneralConfigTab();
+
+  private:
+    Ui::EditConfigWidget *ui;
+
+  public Q_SLOTS:
+    void apply ();
+    void reload ();
+    void reset () {}
+    void defaults () {}
+};
+
 class KateSelectConfigTab : public KateConfigPage
 {
   Q_OBJECT
@@ -205,6 +243,30 @@ class KateViInputModeConfigTab : public KateConfigPage
 
   private Q_SLOTS:
     void showWhatsThis(const QString& text);
+    void addNewNormalModeMappingRow();
+    void removeSelectedNormalMappingRow();
+};
+
+class KateSpellCheckConfigTab : public KateConfigPage
+{
+  Q_OBJECT
+
+  public:
+    KateSpellCheckConfigTab(QWidget *parent);
+    ~KateSpellCheckConfigTab();
+
+  protected:
+    Ui::SpellCheckConfigWidget *ui;
+    Sonnet::ConfigWidget *m_sonnetConfigWidget;
+
+  public Q_SLOTS:
+    void apply ();
+    void reload ();
+    void reset () {}
+    void defaults () {}
+
+  private Q_SLOTS:
+    void showWhatsThis(const QString& text);
 };
 
 class KateEditConfigTab : public KateConfigPage
@@ -215,9 +277,6 @@ public:
   KateEditConfigTab(QWidget *parent);
   ~KateEditConfigTab();
 
-protected:
-  Ui::EditConfigWidget *ui;
-
 public Q_SLOTS:
   void apply ();
   void reload ();
@@ -225,10 +284,12 @@ public Q_SLOTS:
   void defaults ();
 
 private:
+  KateEditGeneralConfigTab *editConfigTab;
   KateSelectConfigTab *selectConfigTab;
   KateIndentConfigTab *indentConfigTab;
   KateCompletionConfigTab *completionConfigTab;
   KateViInputModeConfigTab *viInputModeConfigTab;
+  KateSpellCheckConfigTab *spellCheckConfigTab;
 };
 
 class KateViewDefaultsConfig : public KateConfigPage
@@ -269,7 +330,7 @@ class KateSaveConfigTab : public KateConfigPage
     QCheckBox *cbLocalFiles, *cbRemoteFiles;
     QCheckBox *replaceTabs, *removeSpaces, *allowEolDetection;
     KIntNumInput *dirSearchDepth;
-    class QSpinBox *blockCount;
+    class KIntSpinBox *blockCount;
     class QLabel *blockCountLabel;
 
   private:

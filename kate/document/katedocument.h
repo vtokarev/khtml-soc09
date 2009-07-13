@@ -676,8 +676,9 @@ class KateDocument : public KTextEditor::Document,
   Q_SIGNALS:
     void dynamicHighlightAdded(KateSmartRange* range);
     void dynamicHighlightRemoved(KateSmartRange* range);
-
+    void respellCheckBlock(KateDocument *document,int start, int end);
   public Q_SLOTS:
+    void respellCheckBlock(int start, int end) {respellCheckBlock(this,start,end);}
     virtual void removeHighlightFromDocument(KTextEditor::SmartRange* topRange);
     virtual void removeActionsFromDocument(KTextEditor::SmartRange* topRange);
 
@@ -1147,6 +1148,20 @@ class KateDocument : public KTextEditor::Document,
       void setPostLoadFilterChecks(QStringList plugins) {m_postLoadFilterChecks=plugins;}
       QStringList m_postLoadFilterChecks;
       static LoadSaveFilterCheckPlugins* loadSaveFilterCheckPlugins();
+
+  public:
+      QString dictionary();
+      QList<QPair<KTextEditor::SmartRange*, QString> > dictionaryRanges();
+
+  public Q_SLOTS:
+      void setDictionary(const QString& dict);
+      void onTheFlySpellCheckingEnabled(bool enable);
+  public:
+      bool isOnTheFlySpellCheckingEnabled();
+      
+  protected:
+      QString m_dictionary;
+      QList<QPair<KTextEditor::SmartRange*, QString> > m_dictionaryRanges;
 };
 
 #endif

@@ -34,7 +34,7 @@
 #include <QHash>
 #include <QRegExp>
 #include <ktexteditor/cursor.h>
-#include "katevikeysequenceparser.h"
+#include "katevikeyparser.h"
 
 class KateViMotion;
 class KateViInputModeManager;
@@ -59,12 +59,14 @@ class KateViNormalMode : public KateViModeBase
     bool commandEnterInsertMode();
     bool commandEnterInsertModeAppend();
     bool commandEnterInsertModeAppendEOL();
-    bool commandEnterInsertModeBeforeFirstCharacterOfLine();
+    bool commandEnterInsertModeBeforeFirstNonBlankInLine();
 
     bool commandEnterVisualMode();
     bool commandEnterVisualLineMode();
     bool commandEnterVisualBlockMode();
     bool commandToOtherEnd();
+
+    bool commandEnterReplaceMode();
 
     bool commandDelete();
     bool commandDeleteToEOL();
@@ -194,6 +196,10 @@ class KateViNormalMode : public KateViModeBase
 
     void addCurrentPositionToJumpList();
 
+    void addMapping( const QString &from, const QString &to );
+    const QString getMapping( const QString &from ) const;
+    const QStringList getMappings() const;
+
   protected:
     void resetParser();
     virtual void reset();
@@ -232,7 +238,7 @@ class KateViNormalMode : public KateViModeBase
     bool m_mappingKeyPress;
     QString m_mappingKeys;
 
-    KateViKeySequenceParser *m_keyParser;
+    KateViKeyParser *m_keyParser;
 };
 
 #endif

@@ -105,6 +105,7 @@ KateDocumentConfig::KateDocumentConfig ()
    m_searchDirConfigDepthSet (true),
    m_backupPrefixSet (true),
    m_backupSuffixSet (true),
+   m_onTheFlySpellCheckSet (true),
    m_doc (0)
 {
   s_global = this;
@@ -132,6 +133,7 @@ KateDocumentConfig::KateDocumentConfig (KateDocument *doc)
    m_searchDirConfigDepthSet (false),
    m_backupPrefixSet (false),
    m_backupSuffixSet (false),
+   m_onTheFlySpellCheckSet (false),
    m_doc (doc)
 {
   m_proberTypeForEncodingAutoDetection=s_global->encodingProberType();
@@ -178,6 +180,8 @@ void KateDocumentConfig::readConfig (const KConfigGroup &config)
 
   setBackupSuffix (config.readEntry("Backup Suffix", QString ("~")));
 
+  setOnTheFlySpellCheck(config.readEntry("On-The-Fly Spellcheck", false));
+  
   configEnd ();
 }
 
@@ -212,6 +216,8 @@ void KateDocumentConfig::writeConfig (KConfigGroup &config)
   config.writeEntry("Backup Prefix", backupPrefix());
 
   config.writeEntry("Backup Suffix", backupSuffix());
+  
+  config.writeEntry("On-The-Fly Spellcheck", onTheFlySpellCheck());
 }
 
 void KateDocumentConfig::updateConfig ()
@@ -617,6 +623,28 @@ void KateDocumentConfig::setSearchDirConfigDepth (int depth)
   configEnd ();
 }
 
+bool KateDocumentConfig::onTheFlySpellCheck() const
+{
+  if (m_onTheFlySpellCheckSet || isGlobal()) {
+    return m_onTheFlySpellCheck;
+  }
+
+  return s_global->onTheFlySpellCheck();
+}
+
+void KateDocumentConfig::setOnTheFlySpellCheck(bool on)
+{
+  configStart ();
+
+  m_onTheFlySpellCheckSet = true;
+  m_onTheFlySpellCheck = on;
+
+  configEnd ();
+}
+
+
+
+
 //END
 
 //BEGIN KateViewConfig
@@ -768,6 +796,7 @@ void KateViewConfig::writeConfig (KConfigGroup &config)
   config.writeEntry( "Vi Input Mode Steal Keys", viInputModeStealKeys());
 
   config.writeEntry( "Vi Input Mode Hide Status Bar", viInputModeHideStatusBar());
+
 
   if (isGlobal()) {
     // Write search pattern history

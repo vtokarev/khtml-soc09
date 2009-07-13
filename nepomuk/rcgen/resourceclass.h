@@ -1,4 +1,4 @@
-/* 
+/*
  *
  * $Id: sourceheader 511311 2006-02-19 14:51:05Z trueg $
  *
@@ -17,6 +17,7 @@
 
 #include <QtCore/QString>
 #include <QtCore/QList>
+#include <QtCore/QUrl>
 
 #include "property.h"
 
@@ -30,18 +31,18 @@ class ResourceClass
 {
     public:
         ResourceClass();
-        ResourceClass( const QString& uri );
+        ResourceClass( const QUrl& uri );
         ~ResourceClass();
 
         /**
          * Sets the uri of the resource.
          */
-        void setUri( const QString &uri );
+        void setUri( const QUrl &uri );
 
         /**
          * Returns the uri of the resource.
          */
-        QString uri() const;
+        QUrl uri() const;
 
         /**
          * Sets the comment of the resource.
@@ -61,7 +62,7 @@ class ResourceClass
         /**
          * Returns the parent resource of the resource.
          */
-        ResourceClass* parentResource() const;
+        ResourceClass* parentClass( bool considerGenerateClass = true ) const;
 
         /**
          * Adds a parent resource to the resource.
@@ -106,26 +107,6 @@ class ResourceClass
         bool generateClass() const;
 
         /**
-         * Sets the path of the header template file.
-         */
-        void setHeaderTemplateFilePath( const QString &path );
-
-        /**
-         * Returns the path of the header template file.
-         */
-        QString headerTemplateFilePath() const;
-
-        /**
-         * Sets the path of the source template file.
-         */
-        void setSourceTemplateFilePath( const QString &path );
-
-        /**
-         * Returns the path of the source template file.
-         */
-        QString sourceTemplateFilePath() const;
-
-        /**
          * Returns the name of the resource.
          *
          * @param nameSpace The namespace that shall be included.
@@ -143,15 +124,13 @@ class ResourceClass
         QString sourceName() const;
 
     private:
-        QString m_uri;
+        QUrl m_uri;
         QString m_comment;
-        ResourceClass* m_parentResource;
+        ResourceClass* m_parentClass;
         QList<ResourceClass*> m_allParentResources;
         Property::ConstPtrList m_properties;
         Property::ConstPtrList m_reverseProperties;
         bool m_generateClass;
-        QString m_headerTemplateFilePath;
-        QString m_sourceTemplateFilePath;
 };
 
 #endif

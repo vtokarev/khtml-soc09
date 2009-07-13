@@ -13,144 +13,153 @@
  */
 
 #include <QtCore/QTextStream>
-#include <QtCore/QCoreApplication>
 #include <QtCore/QFile>
 #include <QtCore/QDebug>
 
+#include <kapplication.h>
+#include <kaboutdata.h>
+#include <kcmdlineargs.h>
+
 #include "resourceclass.h"
 #include "ontologyparser.h"
+#include "codegenerator.h"
 
 
 bool quiet = true;
 
-static int usage()
+namespace {
+QStringList extractSpaceSeparatedLists( const QStringList& args )
 {
-    QTextStream( stderr, QIODevice::WriteOnly )
-        << "Usage:" << endl
-        << "   " << QCoreApplication::instance()->arguments()[0] << " --writeall [--fast] [--templates <tmpl1> [<tmpl2> [<tmpl3> ...]]] [--no-external-refs] --target <sourcefolder> --ontologies <ontologyfile(s)>" << endl
-        << "   " << QCoreApplication::instance()->arguments()[0] << " --listincludes [--fast] --ontologies <ontologyfile(s)>" << endl
-        << "   " << QCoreApplication::instance()->arguments()[0] << " --listheaders [--fast] [--prefix <listprefix>] --ontologies <ontologyfile(s)>" << endl
-        << "   " << QCoreApplication::instance()->arguments()[0] << " --listsources [--fast] [--prefix <listprefix>] --ontologies <ontologyfile(s)>" << endl;
-    return 1;
+    QStringList results;
+    foreach( const QString& a, args ) {
+        results << a.split( ' ' );
+    }
+    return results;
 }
-
+}
 
 int main( int argc, char** argv )
 {
-    // we probably need a QCoreApplication instance for some
-    // stuff. If not, who cares, we don't do anything time relevant here
-    QCoreApplication app( argc, argv );
+    KAboutData aboutData( "nepomuk-rcgen",
+                          "nepomuk-rcgen",
+                          ki18n("Nepomuk Resource Class Generator"),
+                          "0.3",
+                          ki18n("Nepomuk Resource Class Generator"),
+                          KAboutData::License_GPL,
+                          ki18n("(c) 2006-2009, Sebastian Trüg"),
+                          KLocalizedString(),
+                          "http://nepomuk.kde.org" );
+    aboutData.addAuthor(ki18n("Sebastian Trüg"), ki18n("Maintainer"), "trueg@kde.org");
+    aboutData.addAuthor(ki18n("Tobias Koenig"), ki18n("Major cleanup - Personal hero of maintainer"), "tokoe@kde.org");
+    aboutData.setProgramIconName( "nepomuk" );
 
-    bool writeAll = false, listHeader = false, listSource = false, listIncludes = false, externalRefs = true, fastMode = false;
-    QStringList ontoFiles;
-    QString targetDir, prefix;
-    QStringList templates;
+    KCmdLineArgs::init( argc, argv, &aboutData );
 
-    QStringList args = app.arguments();
-    if( args.count() < 2 )
-        return usage();
+    KCmdLineOptions options;
+    options.add("verbose", ki18n("Verbose output debugging mode."));
+    options.add("fast", ki18n("Generate simple and fast wrapper classes not based on Nepomuk::Resource which do not provide any data integrity checking"));
+    options.add("writeall", ki18n("Actually generate the code."));
+    options.add("listincludes", ki18n("List all includes (deprecated)."));
+    options.add("listheaders", ki18n("List all header files that will be generated via the --writeall command."));
+    options.add("listsources", ki18n("List all source files that will be generated via the --writeall command."));
+    options.add("ontologies <files>", ki18n("The ontology files containing the ontologies to be generated, a space separated list (deprecated: use arguments instead.)"));
+    options.add("prefix <prefix>", ki18n("Include path prefix (deprecated)"));
+    options.add("target <target-folder>", ki18n("Specify the target folder to store generated files into."));
+    // (romain_kdab) : watch out for a regression with --templates :
+    // KCmdLineOptions doesn't allow empty option arguments, so e.g. "--templates --foo" will treat --foo as the argument to --templates
+    // Since the option is deprecated it's probably not worth changing the KCmdLineOptions behaviour only for this ?
+    options.add("templates <templates>", ki18n("Templates to be used (deprecated)."));
+    options.add("class <classname>", ki18n("Optionally specify the classes to be generated. Use option multiple times (defaults to all classes)"));
+    options.add("serialization <rdf-serialization>", ki18n("Serialization used in the ontology files. Will default to primitive file extension detection."));
+    options.add("visibility <visibility-name>", ki18n("Set the used visibility in case the classes are to be used in public API. <visibility-name> will be used to construct the export macro name and the export header. By default classes will not be exported."));
+    options.add("+[ontologies]", ki18n("The ontology files containing the ontologies to be generated."));
 
-    QStringList::const_iterator argIt = args.constBegin();
-    ++argIt; // skip the app name
-    while (argIt != args.constEnd()) {
-        const QString& arg = *argIt;
+    KCmdLineArgs::addCmdLineOptions( options );
+    KApplication app( false /* no gui */ );
+    KCmdLineArgs* args = KCmdLineArgs::parsedArgs();
 
-        // new parameter
-        if ( arg.startsWith("--") ) {
-            // gather parameter arg
-            QStringList paramArgs;
-            ++argIt;
-            while ( argIt != args.constEnd() &&
-                    !(*argIt).startsWith("--") ) {
-                paramArgs += *argIt;
-                ++argIt;
-            }
 
-            // now lets see what we have
-            if ( arg == "--writeall" ) {
-                writeAll = true;
-            }
-            else if ( arg == "--fast" ) {
-                fastMode = true;
-            }
-            else if ( arg == "--listincludes" ) {
-                listIncludes = true;
-            }
-            else if ( arg == "--listheaders" ) {
-                listHeader = true;
-            }
-            else if ( arg == "--listsources" ) {
-                listSource = true;
-            }
-            else if ( arg == "--no-external-refs" ) {
-                externalRefs = false;
-            }
-            else if ( arg == "--templates" ) {
-                templates = paramArgs;
-            }
-            else if ( arg == "--ontologies" ) {
-                if ( paramArgs.isEmpty() ) {
-                    return usage();
-                }
-                ontoFiles = paramArgs;
-            }
-            else if ( arg == "--prefix" ) {
-                if ( paramArgs.count() != 1 ) {
-                    return usage();
-                }
-                prefix = paramArgs.first();
-            }
-            else if ( arg == "--target" ) {
-                if ( paramArgs.count() != 1 ) {
-                    return usage();
-                }
-                targetDir = paramArgs.first();
-            }
-            else if ( arg == "--verbose" ) {
-                quiet = false;
-            }
-            else {
-                return usage();
-            }
-        }
-        else
-            return usage();
-    }
+    // =====================================================
+    // prepare configuration
+    // =====================================================
+    bool writeAll = args->isSet("writeall");
+    bool listHeader = args->isSet("listheaders");
+    bool listSource = args->isSet("listsources");
+    bool listIncludes = args->isSet("listincludes");
+    bool fastMode = args->isSet("fast");
+    quiet = !args->isSet("verbose");
+    QStringList ontoFiles = extractSpaceSeparatedLists( args->getOptionList("ontologies") ); // backwards comp
+    for(int i = 0; i < args->count(); ++i )
+        ontoFiles << args->arg(i);
+    QString targetDir = args->getOption("target");
+    QString prefix = args->getOption("prefix");
+    QStringList templates = args->getOptionList("templates");
+    QStringList classesToGenerate = args->getOptionList( "class" );
+    QString visibility = args->getOption("visibility");
 
-    foreach( const QString &ontoFile, ontoFiles ) {
+    // =====================================================
+    // a few checks for valid parameters (not complete!)
+    // =====================================================
+    foreach( const QString& ontoFile, ontoFiles ) {
         if( !QFile::exists( ontoFile ) ) {
-            qDebug() << "Ontology file " << ontoFile << " does not exist." << endl;
+            QTextStream s( stderr );
+            s << "Ontology file " << ontoFile << " does not exist." << endl;
             return -1;
         }
     }
+
+    if( fastMode && !visibility.isEmpty() ) {
+        QTextStream s( stderr );
+        s << "Cannot export fast classes. They are only meant to be used as private classes." << endl;
+        return -1;
+    }
+
 
     if( writeAll ) {
         if( !QFile::exists( targetDir ) ) {
-            qDebug() << "Folder " << targetDir << " does not exist." << endl;
+            QTextStream s( stderr );
+            s << "Folder " << targetDir << " does not exist." << endl;
             return -1;
         }
     }
 
+
+    // =====================================================
+    // parse the data and determine the classes to generate
+    // =====================================================
     OntologyParser prsr;
-    foreach( const QString &ontoFile, ontoFiles ) {
-        if( !prsr.parse( ontoFile ) ) {
-            qDebug() << "Parsing ontology file " << ontoFile << " failed." << endl;
+    foreach( const QString& ontoFile, ontoFiles ) {
+        if( !prsr.parse( ontoFile, args->getOption("serialization") ) ) {
+            QTextStream s( stderr );
+            s << "Parsing ontology file " << ontoFile << " failed." << endl;
             return -1;
         }
     }
+
+    // if classes to be generated have been specified on the command line, reset all ResourceClass
+    // instances in terms of generation
+    if( !classesToGenerate.isEmpty() ) {
+        foreach( ResourceClass* rc, prsr.parsedClasses() ) {
+            rc->setGenerateClass( classesToGenerate.contains( rc->name() ) );
+        }
+    }
+
+
+    // =====================================================
+    // create the code generator which will take care of the rest
+    // =====================================================
+    CodeGenerator codeGen( fastMode ? CodeGenerator::FastMode : CodeGenerator::SafeMode, prsr.parsedClasses() );
+    codeGen.setVisibility( visibility );
 
     if( writeAll ) {
-        if( !prsr.assignTemplates( templates ) ) {
-            return -1;
-        }
-
-        if( !prsr.writeSources( targetDir, externalRefs, fastMode ) ) {
-            qDebug() << "Writing sources to " << targetDir << " failed." << endl;
+        if( !codeGen.writeSources( targetDir ) ) {
+            QTextStream s( stderr );
+            s << "Writing sources to " << targetDir << " failed." << endl;
             return -1;
         }
     }
     else if( listSource ) {
-        QStringList l = prsr.listSources();
+        QStringList l = codeGen.listSources();
         QTextStream s( stdout, QIODevice::WriteOnly );
         QStringListIterator it( l );
         while( it.hasNext() )
@@ -160,7 +169,7 @@ int main( int argc, char** argv )
             s << prefix << "resource.cpp;";
     }
     else if( listHeader ) {
-        QStringList l = prsr.listHeader();
+        QStringList l = codeGen.listHeader();
         QTextStream s( stdout, QIODevice::WriteOnly );
         QStringListIterator it( l );
         while( it.hasNext() )
@@ -170,7 +179,7 @@ int main( int argc, char** argv )
             s << prefix << "resource.h;";
     }
     else if( listIncludes ) {
-        QStringList l = prsr.listHeader();
+        QStringList l = codeGen.listHeader();
         QTextStream s( stdout, QIODevice::WriteOnly );
         QStringListIterator it( l );
         while( it.hasNext() )

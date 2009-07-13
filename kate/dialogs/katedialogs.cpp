@@ -4,6 +4,8 @@
    Copyright (C) 2001 Joseph Wenninger <jowenn@kde.org>
    Copyright (C) 2006 Dominik Haumann <dhdev@gmx.de>
    Copyright (C) 2007 Mirko Stocker <me@misto.ch>
+   Copyright (C) 2009 Michel Ludwig <michel.ludwig@kdemail.net>
+   Copyright (C) 2009 Erlend Hamberg <ehamberg@gmail.com>
 
    Based on work of:
      Copyright (C) 1999 Jochen Wilhelmy <digisnap@cs.tu-berlin.de>
@@ -32,12 +34,15 @@
 #include "kateconfig.h"
 #include "katedocument.h"
 #include "kateglobal.h"
+#include "kateviglobal.h"
+#include "katevikeyparser.h"
 #include "kateschema.h"
 #include "katesyntaxdocument.h"
 #include "katemodeconfigpage.h"
 #include "kateview.h"
 #include "katepartpluginmanager.h"
 #include "kpluginselector.h"
+#include "spellcheck/spellcheck.h"
 
 // auto generated ui files
 #include "ui_modonhdwidget.h"
@@ -49,6 +54,7 @@
 #include "ui_opensaveconfigwidget.h"
 #include "ui_opensaveconfigadvwidget.h"
 #include "ui_viinputmodeconfigwidget.h"
+#include "ui_spellcheckconfigwidget.h"
 
 #include <ktexteditor/plugin.h>
 
@@ -84,8 +90,8 @@
 #include <kvbox.h>
 #include <kactioncollection.h>
 #include <kplugininfo.h>
-
 #include <ktabwidget.h>
+
 //#include <knewstuff/knewstuff.h>
 #include <QtGui/QCheckBox>
 #include <QtGui/QComboBox>
@@ -99,7 +105,6 @@
 #include <QtGui/QPainter>
 #include <QtGui/QRadioButton>
 #include <QtGui/QSlider>
-#include <QtGui/QSpinBox>
 #include <QtCore/QStringList>
 #include <QtGui/QTabWidget>
 #include <QtCore/QTextCodec>
@@ -226,6 +231,7 @@ void KateIndentConfigTab::reload ()
 {
   uint configFlags = KateDocumentConfig::global()->configFlags();
 
+  ui->sbIndentWidth->setSuffix(ki18np(" character", " characters"));
   ui->sbIndentWidth->setValue(KateDocumentConfig::global()->indentationWidth());
   ui->chkKeepExtraSpaces->setChecked(configFlags & KateDocumentConfig::cfKeepExtraSpaces);
   ui->chkIndentPaste->setChecked(configFlags & KateDocumentConfig::cfIndentPastedText);
@@ -322,9 +328,31 @@ KateViInputModeConfigTab::KateViInputModeConfigTab(QWidget *parent)
   connect(ui->chkViInputModeDefault, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
   connect(ui->chkViCommandsOverride, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
   connect(ui->chkViStatusBarHide, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
+  connect(ui->tblNormalModeMappings, SIGNAL(cellChanged(int, int)), this, SLOT(slotChanged()));
+  connect(ui->btnAddNewNormal, SIGNAL(clicked()), this, SLOT(addNewNormalModeMappingRow()));
+  connect(ui->btnRemoveSelectedNormal, SIGNAL(clicked()), this, SLOT(removeSelectedNormalMappingRow()));
 
   ui->chkViCommandsOverride->setEnabled(ui->chkViInputModeDefault->isChecked());
   ui->chkViStatusBarHide->setEnabled(ui->chkViInputModeDefault->isChecked());
+
+  QStringList l = KateGlobal::self()->viInputModeGlobal()->getMappings( NormalMode );
+  ui->tblNormalModeMappings->setRowCount( l.size() );
+
+  // make the two columns fill the entire table width
+  ui->tblNormalModeMappings->setColumnWidth( 0, ui->tblNormalModeMappings->width()/3 );
+  ui->tblNormalModeMappings->horizontalHeader()->setStretchLastSection( true );
+
+  int i = 0;
+  foreach( const QString &f, l ) {
+    QTableWidgetItem *from
+      = new QTableWidgetItem( KateViKeyParser::getInstance()->decodeKeySequence( f ) );
+    QString s = KateGlobal::self()->viInputModeGlobal()->getMapping( NormalMode, f );
+    QTableWidgetItem *to =
+      new QTableWidgetItem( KateViKeyParser::getInstance()->decodeKeySequence( s ) );
+
+    ui->tblNormalModeMappings->setItem(i, 0, from);
+    ui->tblNormalModeMappings->setItem(i++, 1, to);
+  }
 
   layout->addWidget(newWidget);
   setLayout(layout);
@@ -351,6 +379,15 @@ void KateViInputModeConfigTab::apply ()
   KateViewConfig::global()->setViInputMode (ui->chkViInputModeDefault->isChecked());
   KateViewConfig::global()->setViInputModeStealKeys (ui->chkViCommandsOverride->isChecked());
   KateViewConfig::global()->setViInputModeHideStatusBar (ui->chkViStatusBarHide->isChecked());
+  KateGlobal::self()->viInputModeGlobal()->clearMappings( NormalMode );
+  for ( int i = 0; i < ui->tblNormalModeMappings->rowCount(); i++ ) {
+    QTableWidgetItem* from = ui->tblNormalModeMappings->item( i, 0 );
+    QTableWidgetItem* to = ui->tblNormalModeMappings->item( i, 1 );
+
+    if ( from && to ) {
+      KateGlobal::self()->viInputModeGlobal()->addMapping( NormalMode, from->text(), to->text() );
+    }
+  }
   KateViewConfig::global()->configEnd ();
 }
 
@@ -360,8 +397,82 @@ void KateViInputModeConfigTab::reload ()
   ui->chkViCommandsOverride->setChecked( KateViewConfig::global()->viInputModeStealKeys () );
   ui->chkViStatusBarHide->setChecked( KateViewConfig::global()->viInputModeHideStatusBar () );
 }
+
+void KateViInputModeConfigTab::addNewNormalModeMappingRow()
+{
+  int rows = ui->tblNormalModeMappings->rowCount();
+  ui->tblNormalModeMappings->insertRow( rows );
+  ui->tblNormalModeMappings->setCurrentCell( rows, 0 );
+  ui->tblNormalModeMappings->editItem( ui->tblNormalModeMappings->currentItem() );
+}
+
+void KateViInputModeConfigTab::removeSelectedNormalMappingRow()
+{
+  QList<QTableWidgetSelectionRange> l = ui->tblNormalModeMappings->selectedRanges();
+
+  foreach( const QTableWidgetSelectionRange &range, l ) {
+    for ( int i = 0; i < range.bottomRow()-range.topRow()+1; i++ ) {
+      ui->tblNormalModeMappings->removeRow( range.topRow() );
+    }
+  }
+}
 //END KateViInputModeConfigTab
 
+//BEGIN KateSpellCheckConfigTab
+KateSpellCheckConfigTab::KateSpellCheckConfigTab(QWidget *parent)
+  : KateConfigPage(parent)
+{
+  // This will let us have more separation between this page and
+  // the KTabWidget edge (ereslibre)
+  QVBoxLayout *layout = new QVBoxLayout;
+  QWidget *newWidget = new QWidget(this);
+
+  ui = new Ui::SpellCheckConfigWidget();
+  ui->setupUi(newWidget);
+
+  // What's This? help can be found in the ui file
+  reload();
+
+  //
+  // after initial reload, connect the stuff for the changed () signal
+  connect(ui->chkOnTheFlySpellCheckEnabled, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
+
+  layout->addWidget(newWidget);
+  m_sonnetConfigWidget = new Sonnet::ConfigWidget(KGlobal::config().data(), this);
+  connect(m_sonnetConfigWidget, SIGNAL(configChanged()), this, SLOT(slotChanged()));
+  layout->addWidget(m_sonnetConfigWidget);
+  setLayout(layout);
+}
+
+KateSpellCheckConfigTab::~KateSpellCheckConfigTab()
+{
+  delete ui;
+}
+
+void KateSpellCheckConfigTab::showWhatsThis(const QString& text)
+{
+  QWhatsThis::showText(QCursor::pos(), text);
+}
+
+void KateSpellCheckConfigTab::apply()
+{
+// nothing changed, no need to apply stuff
+  if (!hasChanged()) {
+    return;
+  }
+  m_changed = false;
+
+  KateDocumentConfig::global()->configStart();
+  KateDocumentConfig::global()->setOnTheFlySpellCheck(ui->chkOnTheFlySpellCheckEnabled->isChecked());
+  m_sonnetConfigWidget->save();
+  KateDocumentConfig::global()->configEnd();
+}
+
+void KateSpellCheckConfigTab::reload()
+{
+  ui->chkOnTheFlySpellCheckEnabled->setChecked(KateDocumentConfig::global()->onTheFlySpellCheck());
+}
+//END KateSpellCheckConfigTab
 
 //BEGIN KateSelectConfigTab
 KateSelectConfigTab::KateSelectConfigTab(QWidget *parent)
@@ -445,92 +556,40 @@ void KateSelectConfigTab::reload ()
 }
 //END KateSelectConfigTab
 
-//BEGIN KateEditConfigTab
-KateEditConfigTab::KateEditConfigTab(QWidget *parent)
+//BEGIN KateEditGeneralConfigTab
+KateEditGeneralConfigTab::KateEditGeneralConfigTab(QWidget *parent)
   : KateConfigPage(parent)
-  , selectConfigTab(new KateSelectConfigTab(this))
-  , indentConfigTab(new KateIndentConfigTab(this))
-  , completionConfigTab (new KateCompletionConfigTab(this))
-  , viInputModeConfigTab(new KateViInputModeConfigTab(this))
 {
-  // FIXME: Is really needed to move all this code below to another class,
-  // since it is another tab itself on the config dialog. This means we should
-  // initialize, add and work with as we do with selectConfigTab and
-  // indentConfigTab (ereslibre)
   QVBoxLayout *layout = new QVBoxLayout;
-  layout->setMargin(0);
-  KTabWidget *tabWidget = new KTabWidget(this);
-  uint configFlags = KateDocumentConfig::global()->configFlags();
-
-  QWidget *tmpWidget = new QWidget(tabWidget);
-  QVBoxLayout *internalLayout = new QVBoxLayout;
-  QWidget *newWidget = new QWidget(tabWidget);
+  QWidget *newWidget = new QWidget(this);
   ui = new Ui::EditConfigWidget();
   ui->setupUi( newWidget );
 
-  ui->chkReplaceTabs->setChecked( configFlags & KateDocumentConfig::cfReplaceTabsDyn );
+  reload();
+
   connect( ui->chkReplaceTabs, SIGNAL(toggled(bool)), this, SLOT(slotChanged()) );
-
-  ui->chkShowTabs->setChecked( configFlags & KateDocumentConfig::cfShowTabs );
   connect(ui->chkShowTabs, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
-
-  ui->chkShowSpaces->setChecked( configFlags & KateDocumentConfig::cfShowSpaces );
   connect(ui->chkShowSpaces, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
-
-  ui->sbTabWidth->setValue( KateDocumentConfig::global()->tabWidth() );
   connect(ui->sbTabWidth, SIGNAL(valueChanged(int)), this, SLOT(slotChanged()));
-
-
-  ui->chkStaticWordWrap->setChecked(KateDocumentConfig::global()->wordWrap());
   connect(ui->chkStaticWordWrap, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
-
-  ui->chkShowStaticWordWrapMarker->setChecked( KateRendererConfig::global()->wordWrapMarker() );
   connect(ui->chkShowStaticWordWrapMarker, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
-
-  ui->sbWordWrap->setValue( KateDocumentConfig::global()->wordWrapAt() );
   connect(ui->sbWordWrap, SIGNAL(valueChanged(int)), this, SLOT(slotChanged()));
-
-
-  ui->chkRemoveTrailingSpaces->setChecked( configFlags & KateDocumentConfig::cfRemoveTrailingDyn );
   connect( ui->chkRemoveTrailingSpaces, SIGNAL(toggled(bool)), this, SLOT(slotChanged()) );
-
-  ui->chkAutoBrackets->setChecked( configFlags & KateDocumentConfig::cfAutoBrackets );
   connect(ui->chkAutoBrackets, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
 
-  // What is this? help is in the ui-file
+  // "What's this?" help is in the ui-file
 
-  internalLayout->addWidget(newWidget);
-  tmpWidget->setLayout(internalLayout);
-
-  // add all tabs
-  tabWidget->insertTab(0, tmpWidget, i18n("General"));
-  tabWidget->insertTab(1, selectConfigTab, i18n("Cursor && Selection"));
-  tabWidget->insertTab(2, indentConfigTab, i18n("Indentation"));
-  tabWidget->insertTab(3, completionConfigTab, i18n("Auto Completion"));
-  tabWidget->insertTab(4, viInputModeConfigTab, i18n("Vi Input Mode"));
-
-  connect(selectConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
-  connect(indentConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
-  connect(completionConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
-  connect(viInputModeConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
-
-  layout->addWidget(tabWidget);
+  layout->addWidget(newWidget);
   setLayout(layout);
 }
 
-KateEditConfigTab::~KateEditConfigTab()
+KateEditGeneralConfigTab::~KateEditGeneralConfigTab()
 {
   delete ui;
 }
 
-void KateEditConfigTab::apply ()
+void KateEditGeneralConfigTab::apply ()
 {
-  // try to update the rest of tabs
-  selectConfigTab->apply();
-  indentConfigTab->apply();
-  completionConfigTab->apply();
-  viInputModeConfigTab->apply();
-
   // nothing changed, no need to apply stuff
   if (!hasChanged())
     return;
@@ -565,28 +624,101 @@ void KateEditConfigTab::apply ()
   KateViewConfig::global()->configEnd ();
 }
 
+void KateEditGeneralConfigTab::reload ()
+{
+  uint configFlags = KateDocumentConfig::global()->configFlags();
+
+  ui->chkReplaceTabs->setChecked( configFlags & KateDocumentConfig::cfReplaceTabsDyn );
+  ui->chkShowTabs->setChecked( configFlags & KateDocumentConfig::cfShowTabs );
+  ui->chkShowSpaces->setChecked( configFlags & KateDocumentConfig::cfShowSpaces );
+  ui->sbTabWidth->setSuffix(ki18np(" character", " characters"));
+  ui->sbTabWidth->setValue( KateDocumentConfig::global()->tabWidth() );
+  ui->chkStaticWordWrap->setChecked(KateDocumentConfig::global()->wordWrap());
+  ui->chkShowStaticWordWrapMarker->setChecked( KateRendererConfig::global()->wordWrapMarker() );
+  ui->sbWordWrap->setSuffix(ki18np(" character", " characters"));
+  ui->sbWordWrap->setValue( KateDocumentConfig::global()->wordWrapAt() );
+  ui->chkRemoveTrailingSpaces->setChecked( configFlags & KateDocumentConfig::cfRemoveTrailingDyn );
+  ui->chkAutoBrackets->setChecked( configFlags & KateDocumentConfig::cfAutoBrackets );
+}
+//END KateEditGeneralConfigTab
+
+
+//BEGIN KateEditConfigTab
+KateEditConfigTab::KateEditConfigTab(QWidget *parent)
+  : KateConfigPage(parent)
+  , editConfigTab(new KateEditGeneralConfigTab(this))
+  , selectConfigTab(new KateSelectConfigTab(this))
+  , indentConfigTab(new KateIndentConfigTab(this))
+  , completionConfigTab (new KateCompletionConfigTab(this))
+  , viInputModeConfigTab(new KateViInputModeConfigTab(this))
+  , spellCheckConfigTab(new KateSpellCheckConfigTab(this))
+{
+  QVBoxLayout *layout = new QVBoxLayout;
+  layout->setMargin(0);
+  KTabWidget *tabWidget = new KTabWidget(this);
+
+  // add all tabs
+  tabWidget->insertTab(0, editConfigTab, i18n("General"));
+  tabWidget->insertTab(1, selectConfigTab, i18n("Cursor && Selection"));
+  tabWidget->insertTab(2, indentConfigTab, i18n("Indentation"));
+  tabWidget->insertTab(3, completionConfigTab, i18n("Auto Completion"));
+  tabWidget->insertTab(4, viInputModeConfigTab, i18n("Vi Input Mode"));
+  tabWidget->insertTab(5, spellCheckConfigTab, i18n("Spellcheck"));
+
+  connect(editConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
+  connect(selectConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
+  connect(indentConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
+  connect(completionConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
+  connect(viInputModeConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
+  connect(spellCheckConfigTab, SIGNAL(changed()), this, SLOT(slotChanged()));
+
+  layout->addWidget(tabWidget);
+  setLayout(layout);
+}
+
+KateEditConfigTab::~KateEditConfigTab()
+{
+}
+
+void KateEditConfigTab::apply ()
+{
+  // try to update the rest of tabs
+  editConfigTab->apply();
+  selectConfigTab->apply();
+  indentConfigTab->apply();
+  completionConfigTab->apply();
+  viInputModeConfigTab->apply();
+  spellCheckConfigTab->apply();
+}
+
 void KateEditConfigTab::reload ()
 {
+  editConfigTab->reload();
   selectConfigTab->reload();
   indentConfigTab->reload();
   completionConfigTab->reload();
   viInputModeConfigTab->reload();
+  spellCheckConfigTab->reload();
 }
 
 void KateEditConfigTab::reset ()
 {
+  editConfigTab->reset();
   selectConfigTab->reset();
   indentConfigTab->reset();
   completionConfigTab->reset();
   viInputModeConfigTab->reset();
+  spellCheckConfigTab->reset();
 }
 
 void KateEditConfigTab::defaults ()
 {
+  editConfigTab->defaults();
   selectConfigTab->defaults();
   indentConfigTab->defaults();
   completionConfigTab->defaults();
   viInputModeConfigTab->defaults();
+  spellCheckConfigTab->defaults();
 }
 //END KateEditConfigTab
 
@@ -664,10 +796,10 @@ void KateViewDefaultsConfig::apply ()
                 this,
                 i18n("Changing the power user mode affects only newly opened / created documents. In KWrite a restart is recommended."),
                 i18n("Power user mode changed"));
-  
+
     KateDocumentConfig::global()->setAllowSimpleMode (!ui->chkDeveloperMode->isChecked());
   }
-  
+
   KateRendererConfig::global()->configEnd ();
   KateViewConfig::global()->configEnd ();
 }
@@ -1147,7 +1279,7 @@ KateGotoBar::KateGotoBar(KateView* view, QWidget *parent)
 {
   QHBoxLayout *topLayout = new QHBoxLayout( centralWidget() );
   topLayout->setMargin(0);
-  gotoRange = new QSpinBox(centralWidget());
+  gotoRange = new KIntSpinBox(centralWidget());
 
   QLabel *label = new QLabel(i18n("&Go to line:"), centralWidget() );
   label->setBuddy(gotoRange);
@@ -1198,6 +1330,48 @@ void KateGotoBar::gotoLine()
   emit hideMe();
 }
 //END KateGotoBar
+
+//BEGIN KateDictionaryBar
+KateDictionaryBar::KateDictionaryBar(KateView* view, QWidget *parent)
+  : KateViewBarWidget( true, view, parent )
+{
+
+  QHBoxLayout *topLayout = new QHBoxLayout(centralWidget());
+  topLayout->setMargin(0);
+  //topLayout->setSpacing(spacingHint());
+  m_dictionaryComboBox = new Sonnet::DictionaryComboBox(centralWidget());
+  connect(m_dictionaryComboBox, SIGNAL(dictionaryChanged(const QString&)),
+          view->document(), SLOT(setDictionary(const QString&)));
+
+  QLabel *label = new QLabel(i18n("Dictionary:"), centralWidget());
+  label->setBuddy(m_dictionaryComboBox);
+
+  topLayout->addWidget(label);
+  topLayout->addWidget(m_dictionaryComboBox, 1);
+  topLayout->setStretchFactor(m_dictionaryComboBox, 0);
+  topLayout->addStretch();
+}
+
+KateDictionaryBar::~KateDictionaryBar()
+{
+}
+
+void KateDictionaryBar::updateData()
+{
+  if (!view()) {
+    return;
+  }
+
+  KateDocument *document = static_cast<KateDocument*>(view()->document());
+  QString dictionary = document->dictionary();
+  if(dictionary.isEmpty()) {
+    dictionary = KateGlobal::self()->spellCheckManager()->defaultDictionary();
+  }
+  m_dictionaryComboBox->setCurrentByDictionary(dictionary);
+}
+
+//END KateGotoBar
+
 
 //BEGIN KateModOnHdPrompt
 KateModOnHdPrompt::KateModOnHdPrompt( KateDocument *doc,

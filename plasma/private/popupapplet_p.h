@@ -20,6 +20,8 @@
 #ifndef POPUPAPPLET_P_H
 #define POPUPAPPLET_P_H
 
+#include <plasma/plasma.h>
+
 namespace Plasma
 {
 

@@ -2,6 +2,7 @@
     Tests for KConfig Compiler
 
     Copyright (c) 2005      by Duncan Mac-Vicar       <duncan@kde.org>
+    Copyright (c) 2009      by Pino Toscano           <pino@kde.org>
 
     *************************************************************************
     *                                                                       *
@@ -13,7 +14,9 @@
     *************************************************************************
 */
 
+#include <QtCore/QDir>
 #include <QtCore/QFile>
+#include <QtCore/QProcess>
 #include <QtCore/QString>
 #include <kdebug.h>
 #include <qtest_kde.h>
@@ -36,9 +39,29 @@ static CompilerTestSet testCases =
 	"test8a.cpp", "test8a.h",
 	"test8b.cpp", "test8b.h",
 	"test9.h", "test9.cpp",
+	"test10.h", "test10.cpp",
+	"test11.h", "test11.cpp",
 	"test_dpointer.cpp", "test_dpointer.h",
 	"test_signal.cpp", "test_signal.h",
 	NULL
+};
+
+static CompilerTestSet testCasesToRun =
+{
+    "test1",
+    "test2",
+    "test3",
+    "test4",
+    "test5",
+    "test6",
+    "test7",
+    "test8",
+    "test9",
+    "test10",
+    "test11",
+    "test_dpointer",
+    "test_signal",
+    0
 };
 
 static CompilerTestSet willFailCases =
@@ -48,30 +71,48 @@ static CompilerTestSet willFailCases =
 	NULL
 };
 
-
-void KConfigCompiler_Test::testExpectedOutput()
+void KConfigCompiler_Test::testBaselineComparison_data()
 {
-	uint i = 0;
-	// Known to pass test cases
-	while (testCases[ i ])
-	{
-		performCompare(QString::fromLatin1(testCases[ i ]));
-		++i;
-	}
+    QTest::addColumn<QString>("testName");
 
-	// broken test cases
-	i= 0;
-	while (willFailCases[ i ])
-	{
-		performCompare(QString::fromLatin1(willFailCases[ i ]), true);
-		++i;
-	}
+    for (const char **it = testCases; *it; ++it) {
+        QTest::newRow(*it) << QString::fromLatin1(*it);
+    }
+}
+
+void KConfigCompiler_Test::testBaselineComparison()
+{
+    QFETCH(QString, testName);
+
+    performCompare(testName);
+}
+
+void KConfigCompiler_Test::testRunning_data()
+{
+    QTest::addColumn<QString>("testName");
+
+    for (const char **it = testCasesToRun; *it; ++it) {
+        QTest::newRow(*it) << QString::fromLatin1(*it);
+    }
+}
+
+void KConfigCompiler_Test::testRunning()
+{
+    QFETCH(QString, testName);
+
+    QProcess process;
+    process.start(QDir::currentPath() + QLatin1String("/") + testName, QIODevice::ReadOnly);
+    if (process.waitForStarted()) {
+        QVERIFY(process.waitForFinished());
+    }
+    QCOMPARE((int)process.error(), (int)QProcess::UnknownError);
+    QCOMPARE(process.exitCode(), 0);
 }
 
 void KConfigCompiler_Test::performCompare(const QString &fileName, bool fail)
 {
 	QFile file(fileName);
-	QFile fileRef(QString::fromLatin1(SRCDIR) + QString::fromLatin1("/") + fileName + QString::fromLatin1(".ref"));
+	QFile fileRef(QString::fromLatin1(KDESRCDIR) + fileName + QString::fromLatin1(".ref"));
 
 	if ( file.open(QIODevice::ReadOnly) && fileRef.open(QIODevice::ReadOnly) )
 	{
@@ -79,7 +120,9 @@ void KConfigCompiler_Test::performCompare(const QString &fileName, bool fail)
 		QString contentRef = fileRef.readAll();
 
 		if (!fail)
-			QCOMPARE( content, contentRef );
+			// use QVERIFY instead of QCOMPARE to avoid having
+			// the whole output shown inline
+			QVERIFY( content == contentRef );
 		else
                     QFAIL( "not implemented" ); // missing in qttestlib?
                 // wrong? QEXPECT_FAIL( "", content, contentRef );

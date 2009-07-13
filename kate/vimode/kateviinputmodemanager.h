@@ -23,12 +23,14 @@
 #include <QKeyEvent>
 #include <QList>
 
+class KConfigGroup;
 class KateView;
 class KateViewInternal;
 class KateViNormalMode;
 class KateViInsertMode;
 class KateViVisualMode;
-class KateViKeySequenceParser;
+class KateViReplaceMode;
+class KateViKeyParser;
 class QString;
 
 /**
@@ -39,7 +41,8 @@ enum ViMode {
   InsertMode,
   VisualMode,
   VisualLineMode,
-  VisualBlockMode
+  VisualBlockMode,
+  ReplaceMode
 };
 
 class KateViInputModeManager
@@ -87,6 +90,11 @@ public:
   void viEnterVisualMode( ViMode visualMode = VisualMode );
 
   /**
+   * set replace mode to be the active vi mode and make the needed setup work
+   */
+  void viEnterReplaceMode();
+
+  /**
    * @return the KateViNormalMode instance
    */
   KateViNormalMode* getViNormalMode();
@@ -100,6 +108,11 @@ public:
    * @return the KateViVisualMode instance
    */
   KateViVisualMode* getViVisualMode();
+
+  /**
+   * @return the KateViReplaceMode instance
+   */
+  KateViReplaceMode* getViReplaceMode();
 
   /**
    * @return true if running a macro
@@ -126,25 +139,21 @@ public:
    */
   void repeatLastChange();
 
-  /**
-   * add a mapping to the given vi mode
-   */
-  void addMapping( ViMode mode, const QString &from, const QString &to );
-
-  const QString getMapping( ViMode mode, const QString &from );
-
-  const QStringList getMappings( ViMode mode );
+  // session stuff
+  void readSessionConfig( const KConfigGroup& config );
+  void writeSessionConfig( KConfigGroup& config );
 
 private:
   KateViNormalMode* m_viNormalMode;
   KateViInsertMode* m_viInsertMode;
   KateViVisualMode* m_viVisualMode;
+  KateViReplaceMode* m_viReplaceMode;
 
   ViMode m_currentViMode;
 
   KateView *m_view;
   KateViewInternal *m_viewInternal;
-  KateViKeySequenceParser *m_keyParser;
+  KateViKeyParser *m_keyParser;
 
   /**
    * set to true when running a macro (including using the '.' command)

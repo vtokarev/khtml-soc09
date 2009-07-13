@@ -1,5 +1,5 @@
 /* This file is part of the KDE libraries
- * Copyright (C) 2008 Erlend Hamberg <ehamberg@gmail.com>
+ * Copyright (C) 2008-2009 Erlend Hamberg <ehamberg@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,25 +21,41 @@
 #define KATE_VI_GLOBAL_H_INCLUDED
 
 #include <QMap>
+#include <QHash>
 #include <QList>
 #include <QString>
 #include <QChar>
+#include "kateviinputmodemanager.h"
+
+class KConfigGroup;
 
 class KateViGlobal
 {
 public:
     KateViGlobal();
     ~KateViGlobal();
-    // registers
-public:
+
+    void writeConfig( KConfigGroup &config ) const;
+    void readConfig( const KConfigGroup &config );
     QString getRegisterContent( const QChar &reg ) const;
     void addToNumberedRegister( const QString &text );
     void fillRegister( const QChar &reg, const QString &text);
+    const QMap<QChar, QString>* getRegisters() { return m_registers; }
+
+    void clearMappings( ViMode mode );
+    void addMapping( ViMode mode, const QString &from, const QString &to );
+    const QString getMapping( ViMode mode, const QString &from, bool decode = false ) const;
+    const QStringList getMappings( ViMode mode, bool decode = false ) const;
+
 private:
+    // registers
     QList<QString> *m_numberedRegisters;
     QMap<QChar, QString> *m_registers;
     QChar m_defaultRegister;
     QString m_registerTemp;
+
+    // mappings
+    QHash <QString, QString> m_normalModeMappings;
 };
 
 #endif
