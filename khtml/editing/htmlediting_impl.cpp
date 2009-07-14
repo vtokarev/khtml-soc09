@@ -2572,7 +2572,7 @@ void InsertListCommandImpl::doApply()
             appendNode(startBlock, ol);
         }
     } else {
-        kDebug() << "[different blogs are not supported yet]" << endl;
+        kDebug() << "[different blocks are not supported yet]" << endl;
     }
 }
 
