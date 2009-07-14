@@ -1539,6 +1539,24 @@ void InputNewlineCommandImpl::doApply()
 //     assert(exceptionCode == 0);
 
     NodeImpl *nodeToInsert = breakNode;
+    NodeImpl *enclosingBlock = selection.start().node()->enclosingBlockFlowElement();
+    kDebug() << enclosingBlock->nodeName() << endl;
+    if (enclosingBlock->id() == ID_LI) {
+        kDebug() << "[insert new list item]" << selection << endl;
+        printEnclosingBlockTree(selection.start().node());
+        Position pos(selection.start().equivalentDownstreamPosition());
+        if (pos.offset() <= pos.node()->caretMinOffset()) {
+            kDebug() << "[at start]" << endl;
+            ElementImpl *listItem = document()->createHTMLElement("LI");
+            appendNode(enclosingBlock->parent(), listItem);
+            // removeNode(pos.node());
+            // appendNode(enclosingBlock->parent(), listItem);
+            // appendNode(listItem, pos.node());
+            // insertNodeBeforePosition(nodeToInsert, pos);
+            setEndingSelection(Position(pos.node(), 0));
+        }
+        return;
+    }
 
     // Handle the case where there is a typing style.
     if (document()->part()->editor()->typingStyle()) {
