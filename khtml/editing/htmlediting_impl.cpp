@@ -2577,7 +2577,7 @@ void InsertListCommandImpl::doApply()
         if (startBlock->id() == ID_LI) {
             kDebug() << "[li]" << endl;
         } else {
-            ElementImpl *ol = document()->createHTMLElement("OL");
+            ElementImpl *ol = document()->createHTMLElement(m_listType == InsertListCommand::OrderedList ? "OL" : "UL");
             ElementImpl *li = document()->createHTMLElement("LI");
             appendNode(ol, li);
             NodeImpl *nextNode;
