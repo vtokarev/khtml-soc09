@@ -1533,19 +1533,19 @@ void InputNewlineCommandImpl::doApply()
 {
     deleteSelection();
     Selection selection = endingSelection();
-
     int exceptionCode = 0;
-    ElementImpl *breakNode = document()->createHTMLElement("BR");
-//     assert(exceptionCode == 0);
 
-    NodeImpl *nodeToInsert = breakNode;
     NodeImpl *enclosingBlock = selection.start().node()->enclosingBlockFlowElement();
     kDebug() << enclosingBlock->nodeName() << endl;
     if (enclosingBlock->id() == ID_LI) {
+        // need to insert new list item or split existing one into 2
+        // consider example: <li>x<u>x<b>x|x</b>x</u>x</li> (| - caret position)
+        // result should look like: <li>x<u>x<b>x</b></u></li><li>x<u>x<b>x</b></u></li>
+        // idea is to walk up to the li item and split and reattach correspondent nodes
         kDebug() << "[insert new list item]" << selection << endl;
         printEnclosingBlockTree(selection.start().node());
         Position pos(selection.start().equivalentDownstreamPosition());
-        if (pos.offset() <= pos.node()->caretMinOffset()) {
+        /* if (pos.offset() <= pos.node()->caretMinOffset()) {
             kDebug() << "[at start]" << endl;
             ElementImpl *listItem = document()->createHTMLElement("LI");
             appendNode(enclosingBlock->parent(), listItem);
@@ -1554,10 +1554,61 @@ void InputNewlineCommandImpl::doApply()
             // appendNode(listItem, pos.node());
             // insertNodeBeforePosition(nodeToInsert, pos);
             setEndingSelection(Position(pos.node(), 0));
+        } else {
+            assert(pos.node()->isTextNode());
+            ElementImpl *listItem = document()->createHTMLElement("LI");
+            TextImpl *textNode = static_cast<TextImpl *>(pos.node());
+            TextImpl *textBeforeNode = document()->createTextNode(textNode->substringData(0, selection.start().offset(), exceptionCode));
+            deleteText(textNode, 0, selection.start().offset());
+            // insertNodeBefore(textBeforeNode, textNode);
+            // insertNodeBefore(nodeToInsert, textNode);
+            appendNode(enclosingBlock->parent(), listItem);
+            setEndingSelection(Position(textNode, 0));
+        }*/
+        NodeImpl *node = pos.node();
+        // split text node into 2 if we are in the middle
+        if (node->isTextNode() && pos.offset() > node->caretMinOffset()) {
+            TextImpl *textNode = static_cast<TextImpl*>(node);
+            TextImpl *textBeforeNode = document()->createTextNode(textNode->substringData(0, selection.start().offset(), exceptionCode));
+            deleteText(textNode, 0, pos.offset());
+            insertNodeBefore(textBeforeNode, textNode);
+            pos = Position(textNode, 0);
+            // insertNodeBefore(nodeToInsert, textNode);
+            // appendNode(enclosingBlock->parent(), listItem);
         }
+        // walk up and reattach
+        while (true) {
+            kDebug() << "[handle node]" << node << endl;
+            printEnclosingBlockTree(enclosingBlock->parent());
+            NodeImpl *parent = node->parent();
+            if (!parent->isElementNode()) {
+                kDebug() << "[non-element nodes on the root path] NOT SUPPORTED" << endl;
+                return;
+            }
+            ElementImpl *parentElement = static_cast<ElementImpl*>(parent);
+            // FIXME copy attributes, styles etc too
+            ElementImpl *newElement = document()->createHTMLElement(parentElement->localName().string());
+            insertNodeAfter(newElement, parentElement);
+            for (NodeImpl *nextSibling = 0; node; node = nextSibling) {
+                kDebug() << "[reattach sibling]" << node << endl;
+                nextSibling = node->nextSibling();
+                removeNode(node);
+                appendNode(newElement, node);
+            }
+            node = newElement;
+            if (parent == enclosingBlock)
+                break;
+        }
+        kDebug() << "[result]" << endl;
+        printEnclosingBlockTree(enclosingBlock->parent());
+        // FIXME set selection after operation
         return;
     }
 
+    ElementImpl *breakNode = document()->createHTMLElement("BR");
+    // assert(exceptionCode == 0);
+
+    NodeImpl *nodeToInsert = breakNode;
     // Handle the case where there is a typing style.
     if (document()->part()->editor()->typingStyle()) {
         int exceptionCode = 0;
