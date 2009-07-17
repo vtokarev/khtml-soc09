@@ -2600,7 +2600,17 @@ void InsertListCommandImpl::doApply()
     printEnclosingBlockTree(start.node());
     if (startBlock == endBlock) {
         if (startBlock->id() == ID_LI) {
-            kDebug() << "[li]" << endl;
+            // we already have a list item, remove it then
+            kDebug() << "[remove list item]" << endl;
+            NodeImpl *listBlock = startBlock->parent(); // it's either <ol> or <ul>
+            // we need to properly split or even remove the list leaving 2 lists:
+            // [listBlock->firstChild(), startBlock) and (startBlock, listBlock->lastChild()]
+            if (listBlock->firstChild() == listBlock->lastChild() && listBlock->firstChild() == startBlock) {
+                // get rid of list completely
+                kDebug() << "[remove list completely]" << endl;
+                removeNodePreservingChildren(listBlock);
+                removeNodePreservingChildren(startBlock);
+            }
         } else {
             ElementImpl *ol = document()->createHTMLElement(m_listType == InsertListCommand::OrderedList ? "OL" : "UL");
             ElementImpl *li = document()->createHTMLElement("LI");
