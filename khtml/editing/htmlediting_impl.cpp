@@ -2610,6 +2610,24 @@ void InsertListCommandImpl::doApply()
                 kDebug() << "[remove list completely]" << endl;
                 removeNodePreservingChildren(listBlock);
                 removeNodePreservingChildren(startBlock);
+            } else if (!startBlock->previousSibling()) {
+                NodeImpl *nextSibling;
+                for (NodeImpl *node = startBlock->firstChild(); node; node = nextSibling) {
+                    nextSibling = node->nextSibling();
+                    removeNode(node);
+                    insertNodeBefore(node, listBlock);
+                }
+                removeNode(startBlock);
+            } else if (!startBlock->nextSibling()) {
+                NodeImpl *nextSibling;
+                for (NodeImpl *node = startBlock->lastChild(); node; node = nextSibling) {
+                    nextSibling = node->previousSibling();
+                    removeNode(node);
+                    insertNodeAfter(node, listBlock);
+                }
+                removeNode(startBlock);
+            } else {
+                // FIXME implement list split
             }
         } else {
             ElementImpl *ol = document()->createHTMLElement(m_listType == InsertListCommand::OrderedList ? "OL" : "UL");
