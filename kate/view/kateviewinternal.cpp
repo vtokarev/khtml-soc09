@@ -2400,6 +2400,11 @@ void KateViewInternal::keyPressEvent( QKeyEvent* e )
 
   if  (key == Qt::Key_Tab || key == Qt::SHIFT+Qt::Key_Backtab || key == Qt::Key_Backtab)
   {
+    if(key == Qt::Key_Tab && m_view->completionWidget()->isCompletionActive()) {
+      e->accept();
+      m_view->completionWidget()->tab();
+      return;
+    }
     if (doc()->invokeTemplateHandler(key)) {
       e->accept();
       return;
@@ -3839,7 +3844,8 @@ void KateViewInternal::inputMethodEvent(QInputMethodEvent* e)
     delete m_imPreeditRange;
     m_imPreeditRange = 0L;
 
-    renderer()->setDrawCaret(false);
+    if ( KApplication::cursorFlashTime() > 0 )
+      renderer()->setDrawCaret(false);
     renderer()->setCaretOverrideColor(QColor());
 
     return;

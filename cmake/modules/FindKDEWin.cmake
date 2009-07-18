@@ -17,6 +17,7 @@ if (WIN32)
   if (NOT KDEWIN_LIBRARY)
 
     find_path(KDEWIN_INCLUDE_DIR kdewin_export.h
+      ${KDE4_INCLUDE_DIR}
       ${CMAKE_INCLUDE_PATH}
       ${CMAKE_INSTALL_PREFIX}/include
     )
@@ -36,6 +37,7 @@ if (WIN32)
     find_library(KDEWIN_LIBRARY
       NAMES ${LIBRARY_NAME}
       PATHS 
+        ${KDE4_LIB_DIR}
         ${_cmakeLibraryPathCmakeStyle}
         ${CMAKE_INSTALL_PREFIX}/lib
       NO_SYSTEM_ENVIRONMENT_PATH
@@ -63,13 +65,13 @@ if (WIN32)
   set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${KDEWIN_LIBRARIES})      
 
   if (KDEWIN_FOUND)
-    if (NOT KDEWIN_FIND_QUIETLY)
-      message(STATUS "Found KDEWIN library: ${KDEWIN_LIBRARY}")
-    endif (NOT KDEWIN_FIND_QUIETLY)
+    if (NOT KDEWin_FIND_QUIETLY)
+      message(STATUS "Found KDEWin library: ${KDEWIN_LIBRARY}")
+    endif (NOT KDEWin_FIND_QUIETLY)
 
   else (KDEWIN_FOUND)
-    if (KDEWIN_FIND_REQUIRED)
-      message(FATAL_ERROR "Could NOT find KDEWIN library\nPlease install it first")
-    endif (KDEWIN_FIND_REQUIRED)
+    if (KDEWin_FIND_REQUIRED)
+      message(FATAL_ERROR "Could NOT find KDEWin library\nPlease install it first")
+    endif (KDEWin_FIND_REQUIRED)
   endif (KDEWIN_FOUND)
 endif (WIN32)
