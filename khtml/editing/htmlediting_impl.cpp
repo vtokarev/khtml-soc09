@@ -706,12 +706,11 @@ void ApplyStyleCommandImpl::doApply()
     start = endingSelection().start();
     end = endingSelection().end();
 
-
+    kDebug() << "[start;end]" << start << end << endl;
     if (start.node() == end.node()) {
         // simple case...start and end are the same node
         applyStyleIfNeeded(start.node(), end.node());
-    }
-    else {
+    } else {
         NodeImpl *node = start.node();
         while (1) {
             if (node->childNodeCount() == 0 && node->renderer() && node->renderer()->isInline()) {
@@ -914,6 +913,7 @@ void ApplyStyleCommandImpl::applyStyleIfNeeded(DOM::NodeImpl *startNode, DOM::No
 bool ApplyStyleCommandImpl::currentlyHasStyle(const Position &pos, const CSSProperty *property) const
 {
     assert(pos.notEmpty());
+    kDebug() << pos << endl;
     CSSStyleDeclarationImpl *decl = document()->defaultView()->getComputedStyle(pos.element(), 0);
     assert(decl);
     CSSValueImpl *value = decl->getPropertyCSSValue(property->id());
@@ -930,7 +930,9 @@ ApplyStyleCommandImpl::StyleChange ApplyStyleCommandImpl::computeStyleChange(con
     QListIterator<CSSProperty*> it(*(style->values()));
     while ( it.hasNext() ) {
         CSSProperty *property = it.next();
+        kDebug() << "[CSS property]:" << property->cssText() << endl;
         if (!currentlyHasStyle(insertionPoint, property)) {
+            kDebug() << "[Add to style change]" << endl;
             switch (property->id()) {
                 case CSS_PROP_FONT_WEIGHT:
                     if (strcasecmp(property->value()->cssText(), "bold") == 0)
@@ -1253,6 +1255,10 @@ void DeleteSelectionCommandImpl::doApply()
     Position upstreamEnd(selection.end().equivalentUpstreamPosition());
     Position downstreamEnd(selection.end().equivalentDownstreamPosition());
 
+    kDebug() << "[Delete:Start]" << upstreamStart << downstreamStart << endl;
+    kDebug() << "[Delete:End]" << upstreamEnd << downstreamEnd << endl;
+    printEnclosingBlockTree(upstreamStart.node());
+
     if (upstreamStart == downstreamEnd)
         // after collapsing whitespace, selection is empty...no work to do
         return;
@@ -1261,6 +1267,7 @@ void DeleteSelectionCommandImpl::doApply()
     bool adjustEndingPositionDownstream = false;
 
     bool onlyWhitespace = containsOnlyWhitespace(upstreamStart, downstreamEnd);
+    kDebug() << "[OnlyWhitespace]" << onlyWhitespace << endl;
 
     bool startCompletelySelected = !onlyWhitespace &&
         (downstreamStart.offset() <= downstreamStart.node()->caretMinOffset() &&
@@ -1272,6 +1279,8 @@ void DeleteSelectionCommandImpl::doApply()
         ((downstreamStart.node() != upstreamEnd.node()) ||
          (downstreamStart.offset() <= downstreamStart.node()->caretMinOffset())));
 
+    kDebug() << "[{start:end}CompletelySelected]" << startCompletelySelected << endCompletelySelected << endl;
+
     unsigned long startRenderedOffset = downstreamStart.renderedOffset();
 
     bool startAtStartOfRootEditableElement = startRenderedOffset == 0 && downstreamStart.inFirstEditableInRootEditableElement();
@@ -1279,9 +1288,15 @@ void DeleteSelectionCommandImpl::doApply()
         (startRenderedOffset == 0 && downstreamStart.inFirstEditableInContainingEditableBlock());
     bool endAtEndOfBlock = downstreamEnd.isLastRenderedPositionInEditableBlock();
 
+    kDebug() << "[startAtStartOfRootEditableElement]" << startAtStartOfRootEditableElement << endl;
+    kDebug() << "[startAtStartOfBlock]" << startAtStartOfBlock << endl;
+    kDebug() << "[endAtEndOfBlock]" << endAtEndOfBlock << endl;
+
     NodeImpl *startBlock = upstreamStart.node()->enclosingBlockFlowElement();
     NodeImpl *endBlock = downstreamEnd.node()->enclosingBlockFlowElement();
     bool startBlockEndBlockAreSiblings = startBlock->parentNode() == endBlock->parentNode();
+
+    kDebug() << "[startBlockEndBlockAreSiblings]" << startBlockEndBlockAreSiblings << startBlock << endBlock << endl;
 
     debugPosition("upstreamStart:       ", upstreamStart);
     debugPosition("downstreamStart:     ", downstreamStart);
@@ -1351,6 +1366,7 @@ void DeleteSelectionCommandImpl::doApply()
     // Do the delete
     //
     NodeImpl *n = downstreamStart.node()->traverseNextNode();
+    kDebug() << "[n]" << n << endl;
 
     // work on start node
     if (startCompletelySelected) {
@@ -1386,14 +1402,16 @@ void DeleteSelectionCommandImpl::doApply()
         assert(downstreamStart.offset() == 1);
     }
 
-    if (!onlyWhitespace && downstreamStart.node() != upstreamEnd.node()) {
+    if (n && !onlyWhitespace && downstreamStart.node() != upstreamEnd.node()) {
         // work on intermediate nodes
-        while (n != upstreamEnd.node()) {
+        while (n && n != upstreamEnd.node()) {
             NodeImpl *d = n;
             n = n->traverseNextNode();
             if (d->renderer() && d->renderer()->isEditable())
                 removeNodeAndPrune(d, startBlock);
         }
+        if (!n)
+            return;
 
         // work on end node
         assert(n == upstreamEnd.node());
@@ -1607,16 +1625,14 @@ void InputNewlineCommandImpl::doApply()
 //         assert(exceptionCode == 0);
         insertNodeAfter(extraBreakNode, nodeToInsert);
         setEndingSelection(Position(extraBreakNode, 0));
-    }
-    else if (atStart) {
+    } else if (atStart) {
         kDebug(6200) << "input newline case 2";
         // Insert node, but place the caret into index 0 of the downstream
         // position. This will make the caret appear after the break, and as we know
         // there is content at that location, this is OK.
         insertNodeBeforePosition(nodeToInsert, pos);
         setEndingSelection(Position(pos.node(), 0));
-    }
-    else {
+    } else {
         // Split a text node
         kDebug(6200) << "input newline case 3";
         assert(pos.node()->isTextNode());
@@ -2516,7 +2532,9 @@ void TypingCommandImpl::issueCommandForDeleteKey()
     Selection selectionToDelete = endingSelection();
     assert(selectionToDelete.state() != Selection::NONE);
 
+    kDebug() << "[selection]" << selectionToDelete << endl;
     if (selectionToDelete.state() == Selection::CARET) {
+        kDebug() << "[caret selection]" << endl;
         Position pos(selectionToDelete.start());
         if (pos.inFirstEditableInRootEditableElement() && pos.offset() <= pos.node()->caretMinOffset()) {
             // we're at the start of a root editable block...do nothing
