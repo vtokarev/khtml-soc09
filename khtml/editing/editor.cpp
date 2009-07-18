@@ -404,7 +404,7 @@ void Editor::appliedEditing(EditCommand &cmd)
   m_part->setCaret(cmd.endingSelection(), false);
     // Command will be equal to last edit command only in the case of typing
   if (d->m_lastEditCommand == cmd) {
-    assert(cmd.commandID() == khtml::TypingCommandID);
+    assert(cmd.isTypingCommand());
   }
   else {
         // Only register a new undo command if the command passed in is

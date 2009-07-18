@@ -76,12 +76,6 @@ EditCommand::~EditCommand()
 {
 }
 
-int EditCommand::commandID() const
-{
-    IF_IMPL_NULL_RETURN_ARG(0);        
-    return get()->commandID();
-}
-
 bool EditCommand::isCompositeStep() const
 {
     IF_IMPL_NULL_RETURN_ARG(false);        
@@ -161,6 +155,16 @@ EditCommand &EditCommand::emptyCommand()
 {
     static EditCommand m_emptyCommand;
     return m_emptyCommand;
+}
+
+bool EditCommand::isInputTextCommand() const
+{
+    return !get() ? false : static_cast<EditCommandImpl*>(get())->isInputTextCommand();
+}
+
+bool EditCommand::isTypingCommand() const
+{
+    return !get() ? false : static_cast<EditCommandImpl*>(get())->isTypingCommand();
 }
 
 //------------------------------------------------------------------------------------------
@@ -784,7 +788,7 @@ void TypingCommand::deleteKeyPressed(DocumentImpl *document)
 
 bool TypingCommand::isOpenForMoreTypingCommand(const EditCommand &cmd)
 {
-    return cmd.commandID() == TypingCommandID && 
+    return cmd.isTypingCommand() &&
         static_cast<const TypingCommand &>(cmd).openForMoreTyping();
 }
 

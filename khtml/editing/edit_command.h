@@ -31,39 +31,6 @@ namespace DOM {
 namespace khtml {
 
 //------------------------------------------------------------------------------------------
-// Constants
-
-/**
- * Edit-command IDs.
- * @internal
- */
-enum ECommandID { 
-    EditCommandID, // leave the base class first, others in alpha order
-    AppendNodeCommandID,
-    ApplyStyleCommandID,
-    CompositeEditCommandID,
-    DeleteCollapsibleWhitespaceCommandID,
-    DeleteSelectionCommandID,
-    DeleteTextCommandID,
-    InputNewlineCommandID,
-    InputTextCommandID,
-    InsertListCommandID,
-    InsertNodeBeforeCommandID,
-    InsertTextCommandID,
-    JoinTextNodesCommandID,
-    MoveSelectionCommandID,
-    ReplaceSelectionCommandID,
-    RemoveCSSPropertyCommandID,
-    RemoveNodeAttributeCommandID,
-    RemoveNodeCommandID,
-    RemoveNodeAndPruneCommandID,
-    RemoveNodePreservingChildrenCommandID,
-    SetNodeAttributeCommandID,
-    SplitTextNodeCommandID,
-    TypingCommandID
-};
-
-//------------------------------------------------------------------------------------------
 // SharedCommandImpl
 
 class EditCommand;
@@ -75,7 +42,6 @@ public:
     SharedCommandImpl() {}
     virtual ~SharedCommandImpl() {}
 
-    virtual int commandID() const = 0;
     virtual bool isCompositeStep() const = 0;
 
     virtual void apply() = 0;
@@ -105,7 +71,6 @@ public:
     EditCommand(const EditCommand &);
     ~EditCommand();
 
-    int commandID() const;
     bool isCompositeStep() const;
     bool isNull() const;
     bool notNull() const;
@@ -127,6 +92,10 @@ public:
     EditCommandImpl *handle() const;
     
     static EditCommand &emptyCommand();
+
+public:
+    bool isInputTextCommand() const;
+    bool isTypingCommand() const;
 };
 
 }/*namespace khtml*/

@@ -62,7 +62,6 @@ public:
 	EditCommandImpl(DOM::DocumentImpl *);
 	virtual ~EditCommandImpl();
 
-    virtual int commandID() const;
     bool isCompositeStep() const { return parent(); }
     EditCommandImpl* parent() const;
     void setParent(EditCommandImpl *);
@@ -88,6 +87,10 @@ public:
     void setStartingSelection(const DOM::Selection &s);
     void setEndingSelection(const DOM::Selection &s);
 
+public:
+    virtual bool isTypingCommand() const { return false; }
+    virtual bool isInputTextCommand() const { return false; }
+
 private:
     DocPtr<DOM::DocumentImpl> m_document;
     ECommandState m_state;
@@ -105,8 +108,6 @@ public:
 	CompositeEditCommandImpl(DOM::DocumentImpl *);
 	virtual ~CompositeEditCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply() = 0;	
 	virtual void doUnapply();
 	virtual void doReapply();
@@ -154,8 +155,6 @@ public:
     AppendNodeCommandImpl(DOM::DocumentImpl *, DOM::NodeImpl *parentNode, DOM::NodeImpl *appendChild);
 	virtual ~AppendNodeCommandImpl();
 
-    virtual int commandID() const;
-
 	virtual void doApply();
 	virtual void doUnapply();
 
@@ -176,8 +175,6 @@ public:
 	ApplyStyleCommandImpl(DOM::DocumentImpl *, DOM::CSSStyleDeclarationImpl *style);
 	virtual ~ApplyStyleCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
 
     DOM::CSSStyleDeclarationImpl *style() const { return m_style; }
@@ -220,8 +217,6 @@ public:
     
 	virtual ~DeleteCollapsibleWhitespaceCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
 
 private:
@@ -243,8 +238,6 @@ public:
     
 	virtual ~DeleteSelectionCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
     
 private:
@@ -265,8 +258,6 @@ public:
 	DeleteTextCommandImpl(DOM::DocumentImpl *document, DOM::TextImpl *node, long offset, long count);
 	virtual ~DeleteTextCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
 	virtual void doUnapply();
 
@@ -290,8 +281,6 @@ public:
     InputNewlineCommandImpl(DOM::DocumentImpl *document);
     virtual ~InputNewlineCommandImpl();
 
-    virtual int commandID() const;
-
     virtual void doApply();
 
 private:
@@ -308,15 +297,14 @@ public:
     InputTextCommandImpl(DOM::DocumentImpl *document);
     virtual ~InputTextCommandImpl();
 
-    virtual int commandID() const;
-
     virtual void doApply();
 
     void deleteCharacter();
     void input(const DOM::DOMString &text);
     
     unsigned long charactersAdded() const { return m_charactersAdded; }
-    
+
+    virtual bool isInputTextCommand() const { return true; }
 private:
     DOM::Position prepareForTextInsertion(bool adjustDownstream);
     void execute(const DOM::DOMString &text);
@@ -333,8 +321,6 @@ class InsertNodeBeforeCommandImpl : public EditCommandImpl
 public:
     InsertNodeBeforeCommandImpl(DOM::DocumentImpl *, DOM::NodeImpl *insertChild, DOM::NodeImpl *refChild);
 	virtual ~InsertNodeBeforeCommandImpl();
-
-    virtual int commandID() const;
 
 	virtual void doApply();
 	virtual void doUnapply();
@@ -356,8 +342,6 @@ public:
 	InsertTextCommandImpl(DOM::DocumentImpl *document, DOM::TextImpl *, long, const DOM::DOMString &);
 	virtual ~InsertTextCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
 	virtual void doUnapply();
 
@@ -380,8 +364,6 @@ public:
 	JoinTextNodesCommandImpl(DOM::DocumentImpl *, DOM::TextImpl *, DOM::TextImpl *);
 	virtual ~JoinTextNodesCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
 	virtual void doUnapply();
 
@@ -403,8 +385,6 @@ public:
     ReplaceSelectionCommandImpl(DOM::DocumentImpl *document, DOM::DocumentFragmentImpl *fragment, bool selectReplacement=true);
     virtual ~ReplaceSelectionCommandImpl();
     
-    virtual int commandID() const;
-
     virtual void doApply();
 
 private:
@@ -421,8 +401,6 @@ public:
     MoveSelectionCommandImpl(DOM::DocumentImpl *document, DOM::DocumentFragmentImpl *fragment, DOM::Position &position);
     virtual ~MoveSelectionCommandImpl();
     
-    virtual int commandID() const;
-    
     virtual void doApply();
     
 private:
@@ -438,8 +416,6 @@ class RemoveCSSPropertyCommandImpl : public EditCommandImpl
 public:
 	RemoveCSSPropertyCommandImpl(DOM::DocumentImpl *, DOM::CSSStyleDeclarationImpl *, int property);
 	virtual ~RemoveCSSPropertyCommandImpl();
-
-    virtual int commandID() const;
 
 	virtual void doApply();
 	virtual void doUnapply();
@@ -463,8 +439,6 @@ public:
 	RemoveNodeAttributeCommandImpl(DOM::DocumentImpl *, DOM::ElementImpl *, DOM::NodeImpl::Id attribute);
 	virtual ~RemoveNodeAttributeCommandImpl();
 
-    virtual int commandID() const;
-
 	virtual void doApply();
 	virtual void doUnapply();
 
@@ -486,8 +460,6 @@ public:
 	RemoveNodeCommandImpl(DOM::DocumentImpl *, DOM::NodeImpl *);
 	virtual ~RemoveNodeCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
 	virtual void doUnapply();
 
@@ -508,8 +480,6 @@ public:
 	RemoveNodeAndPruneCommandImpl(DOM::DocumentImpl *, DOM::NodeImpl *pruneNode, DOM::NodeImpl *stopNode=0);
 	virtual ~RemoveNodeAndPruneCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
 
     DOM::NodeImpl *pruneNode() const { return m_pruneNode; }
@@ -529,8 +499,6 @@ public:
 	RemoveNodePreservingChildrenCommandImpl(DOM::DocumentImpl *, DOM::NodeImpl *);
 	virtual ~RemoveNodePreservingChildrenCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
 
     DOM::NodeImpl *node() const { return m_node; }
@@ -547,8 +515,6 @@ class SetNodeAttributeCommandImpl : public EditCommandImpl
 public:
 	SetNodeAttributeCommandImpl(DOM::DocumentImpl *, DOM::ElementImpl *, DOM::NodeImpl::Id attribute, const DOM::DOMString &value);
 	virtual ~SetNodeAttributeCommandImpl();
-
-    virtual int commandID() const;
 
 	virtual void doApply();
 	virtual void doUnapply();
@@ -573,8 +539,6 @@ public:
 	SplitTextNodeCommandImpl(DOM::DocumentImpl *, DOM::TextImpl *, long);
 	virtual ~SplitTextNodeCommandImpl();
 	
-    virtual int commandID() const;
-
 	virtual void doApply();
 	virtual void doUnapply();
 
@@ -596,8 +560,6 @@ public:
     TypingCommandImpl(DOM::DocumentImpl *document);
     virtual ~TypingCommandImpl();
     
-    virtual int commandID() const;
-
     virtual void doApply();
 
     bool openForMoreTyping() const { return m_openForMoreTyping; }
@@ -606,6 +568,8 @@ public:
     void insertText(const DOM::DOMString &text);
     void insertNewline();
     void deleteKeyPressed();
+
+    virtual bool isTypingCommand() const { return true; }
 
 private:
     void issueCommandForDeleteKey();
@@ -625,8 +589,6 @@ public:
 
     InsertListCommandImpl(DOM::DocumentImpl *document, Type type);
     virtual ~InsertListCommandImpl();
-
-    virtual int commandID() const { return InsertListCommandID; }
 
     virtual void doApply();
 

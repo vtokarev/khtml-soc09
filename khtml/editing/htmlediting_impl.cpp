@@ -237,11 +237,6 @@ EditCommandImpl::~EditCommandImpl()
     m_document->deref();
 }
 
-int EditCommandImpl::commandID() const
-{
-    return EditCommandID;
-}
-
 void EditCommandImpl::apply()
 {
     assert(m_document);
@@ -335,11 +330,6 @@ CompositeEditCommandImpl::CompositeEditCommandImpl(DocumentImpl *document)
 
 CompositeEditCommandImpl::~CompositeEditCommandImpl()
 {
-}
-
-int CompositeEditCommandImpl::commandID() const
-{
-    return CompositeEditCommandID;
 }
 
 void CompositeEditCommandImpl::doUnapply()
@@ -565,11 +555,6 @@ AppendNodeCommandImpl::~AppendNodeCommandImpl()
         m_appendChild->deref();
 }
 
-int AppendNodeCommandImpl::commandID() const
-{
-    return AppendNodeCommandID;
-}
-
 void AppendNodeCommandImpl::doApply()
 {
     assert(m_parentNode);
@@ -605,11 +590,6 @@ ApplyStyleCommandImpl::~ApplyStyleCommandImpl()
 {
     assert(m_style);
     m_style->deref();
-}
-
-int ApplyStyleCommandImpl::commandID() const
-{
-    return ApplyStyleCommandID;
 }
 
 static bool isBlockLevelStyle(const CSSStyleDeclarationImpl* style)
@@ -1015,11 +995,6 @@ DeleteCollapsibleWhitespaceCommandImpl::~DeleteCollapsibleWhitespaceCommandImpl(
 {
 }
 
-int DeleteCollapsibleWhitespaceCommandImpl::commandID() const
-{
-    return DeleteCollapsibleWhitespaceCommandID;
-}
-
 static bool shouldDeleteUpstreamPosition(const Position &pos)
 {
     if (!pos.node()->isTextNode())
@@ -1165,11 +1140,6 @@ DeleteSelectionCommandImpl::DeleteSelectionCommandImpl(DocumentImpl *document, c
 
 DeleteSelectionCommandImpl::~DeleteSelectionCommandImpl()
 {
-}
-
-int DeleteSelectionCommandImpl::commandID() const
-{
-    return DeleteSelectionCommandID;
 }
 
 void DeleteSelectionCommandImpl::joinTextNodesWithSameStyle()
@@ -1477,11 +1447,6 @@ DeleteTextCommandImpl::~DeleteTextCommandImpl()
         m_node->deref();
 }
 
-int DeleteTextCommandImpl::commandID() const
-{
-    return DeleteTextCommandID;
-}
-
 void DeleteTextCommandImpl::doApply()
 {
     assert(m_node);
@@ -1514,11 +1479,6 @@ InputNewlineCommandImpl::InputNewlineCommandImpl(DocumentImpl *document)
 
 InputNewlineCommandImpl::~InputNewlineCommandImpl()
 {
-}
-
-int InputNewlineCommandImpl::commandID() const
-{
-    return InputNewlineCommandID;
 }
 
 void InputNewlineCommandImpl::insertNodeAfterPosition(NodeImpl *node, const Position &pos)
@@ -1655,11 +1615,6 @@ InputTextCommandImpl::InputTextCommandImpl(DocumentImpl *document)
 
 InputTextCommandImpl::~InputTextCommandImpl()
 {
-}
-
-int InputTextCommandImpl::commandID() const
-{
-    return InputTextCommandID;
 }
 
 void InputTextCommandImpl::doApply()
@@ -1874,11 +1829,6 @@ InsertNodeBeforeCommandImpl::~InsertNodeBeforeCommandImpl()
         m_refChild->deref();
 }
 
-int InsertNodeBeforeCommandImpl::commandID() const
-{
-    return InsertNodeBeforeCommandID;
-}
-
 void InsertNodeBeforeCommandImpl::doApply()
 {
     assert(m_insertChild);
@@ -1919,11 +1869,6 @@ InsertTextCommandImpl::~InsertTextCommandImpl()
 {
     if (m_node)
         m_node->deref();
-}
-
-int InsertTextCommandImpl::commandID() const
-{
-    return InsertTextCommandID;
 }
 
 void InsertTextCommandImpl::doApply()
@@ -1970,11 +1915,6 @@ JoinTextNodesCommandImpl::~JoinTextNodesCommandImpl()
         m_text2->deref();
 }
 
-int JoinTextNodesCommandImpl::commandID() const
-{
-    return JoinTextNodesCommandID;
-}
-
 void JoinTextNodesCommandImpl::doApply()
 {
     assert(m_text1);
@@ -2018,11 +1958,6 @@ ReplaceSelectionCommandImpl::ReplaceSelectionCommandImpl(DocumentImpl *document,
 
 ReplaceSelectionCommandImpl::~ReplaceSelectionCommandImpl()
 {
-}
-
-int ReplaceSelectionCommandImpl::commandID() const
-{
-    return ReplaceSelectionCommandID;
 }
 
 void ReplaceSelectionCommandImpl::doApply()
@@ -2107,11 +2042,6 @@ MoveSelectionCommandImpl::~MoveSelectionCommandImpl()
 {
 }
 
-int MoveSelectionCommandImpl::commandID() const
-{
-    return MoveSelectionCommandID;
-}
-
 void MoveSelectionCommandImpl::doApply()
 {
     Selection selection = endingSelection();
@@ -2153,11 +2083,6 @@ RemoveCSSPropertyCommandImpl::~RemoveCSSPropertyCommandImpl()
     m_decl->deref();
 }
 
-int RemoveCSSPropertyCommandImpl::commandID() const
-{
-    return RemoveCSSPropertyCommandID;
-}
-
 void RemoveCSSPropertyCommandImpl::doApply()
 {
     assert(m_decl);
@@ -2191,11 +2116,6 @@ RemoveNodeAttributeCommandImpl::~RemoveNodeAttributeCommandImpl()
 {
     assert(m_element);
     m_element->deref();
-}
-
-int RemoveNodeAttributeCommandImpl::commandID() const
-{
-    return RemoveNodeAttributeCommandID;
 }
 
 void RemoveNodeAttributeCommandImpl::doApply()
@@ -2255,11 +2175,6 @@ RemoveNodeCommandImpl::~RemoveNodeCommandImpl()
         m_refChild->deref();
 }
 
-int RemoveNodeCommandImpl::commandID() const
-{
-    return RemoveNodeCommandID;
-}
-
 void RemoveNodeCommandImpl::doApply()
 {
     assert(m_parent);
@@ -2302,11 +2217,6 @@ RemoveNodeAndPruneCommandImpl::~RemoveNodeAndPruneCommandImpl()
         m_stopNode->deref();
 }
 
-int RemoveNodeAndPruneCommandImpl::commandID() const
-{
-    return RemoveNodeAndPruneCommandID;
-}
-
 void RemoveNodeAndPruneCommandImpl::doApply()
 {
     NodeImpl *editableBlock = m_pruneNode->enclosingBlockFlowElement();
@@ -2338,11 +2248,6 @@ RemoveNodePreservingChildrenCommandImpl::~RemoveNodePreservingChildrenCommandImp
         m_node->deref();
 }
 
-int RemoveNodePreservingChildrenCommandImpl::commandID() const
-{
-    return RemoveNodePreservingChildrenCommandID;
-}
-
 void RemoveNodePreservingChildrenCommandImpl::doApply()
 {
     NodeListImpl *children = node()->childNodes();
@@ -2370,11 +2275,6 @@ SetNodeAttributeCommandImpl::~SetNodeAttributeCommandImpl()
 {
     if (m_element)
         m_element->deref();
-}
-
-int SetNodeAttributeCommandImpl::commandID() const
-{
-    return SetNodeAttributeCommandID;
 }
 
 void SetNodeAttributeCommandImpl::doApply()
@@ -2416,11 +2316,6 @@ SplitTextNodeCommandImpl::~SplitTextNodeCommandImpl()
         m_text1->deref();
     if (m_text2)
         m_text2->deref();
-}
-
-int SplitTextNodeCommandImpl::commandID() const
-{
-    return SplitTextNodeCommandID;
 }
 
 void SplitTextNodeCommandImpl::doApply()
@@ -2482,11 +2377,6 @@ TypingCommandImpl::~TypingCommandImpl()
 {
 }
 
-int TypingCommandImpl::commandID() const
-{
-    return TypingCommandID;
-}
-
 void TypingCommandImpl::doApply()
 {
 }
@@ -2508,7 +2398,7 @@ void TypingCommandImpl::insertText(const DOMString &text)
     }
     else {
         EditCommand lastCommand = m_cmds.last();
-        if (lastCommand.commandID() == InputTextCommandID) {
+        if (lastCommand.isInputTextCommand()) {
             static_cast<InputTextCommand &>(lastCommand).input(text);
         }
         else {
