@@ -3399,6 +3399,9 @@ void KHTMLPart::selectionLayoutChanged()
     if (d->editor_context.m_caretBlinks && d->editor_context.m_caretPaint)
       d->editor_context.m_caretBlinkTimer = startTimer(qApp->cursorFlashTime() / 2);
     d->editor_context.m_selection.needsCaretRepaint();
+    // make sure that caret is visible
+    QRect r(d->editor_context.m_selection.getRepaintRect());
+    d->m_view->ensureVisible(r.x(), r.y());
   }
 
   if (d->m_doc)
