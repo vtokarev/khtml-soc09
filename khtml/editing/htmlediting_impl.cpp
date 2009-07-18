@@ -2611,6 +2611,7 @@ void InsertListCommandImpl::doApply()
                 removeNodePreservingChildren(listBlock);
                 removeNodePreservingChildren(startBlock);
             } else if (!startBlock->previousSibling()) {
+                // move nodes from this list item before the list
                 NodeImpl *nextSibling;
                 for (NodeImpl *node = startBlock->firstChild(); node; node = nextSibling) {
                     nextSibling = node->nextSibling();
@@ -2619,6 +2620,7 @@ void InsertListCommandImpl::doApply()
                 }
                 removeNode(startBlock);
             } else if (!startBlock->nextSibling()) {
+                // move nodes from this list item after the list
                 NodeImpl *nextSibling;
                 for (NodeImpl *node = startBlock->lastChild(); node; node = nextSibling) {
                     nextSibling = node->previousSibling();
@@ -2627,6 +2629,7 @@ void InsertListCommandImpl::doApply()
                 }
                 removeNode(startBlock);
             } else {
+                // split list into 2 and nodes from this list item goes between lists
                 WTF::PassRefPtr<NodeImpl> newListBlock = listBlock->cloneNode(false);
                 insertNodeAfter(newListBlock.get(), listBlock);
                 NodeImpl *node, *nextSibling;
