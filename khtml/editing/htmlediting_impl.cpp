@@ -2627,7 +2627,20 @@ void InsertListCommandImpl::doApply()
                 }
                 removeNode(startBlock);
             } else {
-                // FIXME implement list split
+                WTF::PassRefPtr<NodeImpl> newListBlock = listBlock->cloneNode(false);
+                insertNodeAfter(newListBlock.get(), listBlock);
+                NodeImpl *node, *nextSibling;
+                for (node = startBlock->nextSibling(); node; node = nextSibling) {
+                    nextSibling = node->nextSibling();
+                    removeNode(node);
+                    appendNode(newListBlock.get(), node);
+                }
+                for (node = startBlock->firstChild(); node; node = nextSibling) {
+                    nextSibling = node->nextSibling();
+                    removeNode(node);
+                    insertNodeBefore(node, newListBlock.get());
+                }
+                removeNode(startBlock);
             }
         } else {
             ElementImpl *ol = document()->createHTMLElement(m_listType == InsertListCommand::OrderedList ? "OL" : "UL");
