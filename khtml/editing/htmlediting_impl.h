@@ -27,17 +27,19 @@
 #define __htmleditingimpl_h__
 
 #include "misc/shared.h"
-#include "htmlediting.h"
 
 #include "xml/dom_position.h"
 #include "xml/dom_selection.h"
 #include "dom/dom_string.h"
+
+#include "xml/dom_nodeimpl.h"
 
 #include <QList>
 
 namespace DOM {
     class CSSProperty;
     class CSSStyleDeclarationImpl;
+    class DocumentFragmentImpl;
     class DocumentImpl;
     class DOMString;
     class ElementImpl;
@@ -51,7 +53,36 @@ namespace DOM {
     class TreeWalkerImpl;
 }
 
-namespace khtml {
+using DOM::DocumentImpl;
+
+namespace khtml
+{
+
+class EditCommandImpl;
+
+class SharedCommandImpl : public Shared<SharedCommandImpl>
+{
+public:
+    SharedCommandImpl() {}
+    virtual ~SharedCommandImpl() {}
+
+    virtual bool isCompositeStep() const = 0;
+
+    virtual void apply() = 0;
+    virtual void unapply() = 0;
+    virtual void reapply() = 0;
+
+    virtual DOM::DocumentImpl* document() const = 0;
+
+    virtual DOM::Selection startingSelection() const = 0;
+    virtual DOM::Selection endingSelection() const = 0;
+
+    virtual void setStartingSelection(const DOM::Selection &s) = 0;
+    virtual void setEndingSelection(const DOM::Selection &s) = 0;
+
+    virtual EditCommandImpl* parent() const = 0;
+    virtual void setParent(EditCommandImpl *) = 0;
+};
 
 //------------------------------------------------------------------------------------------
 // EditCommandImpl
@@ -59,18 +90,18 @@ namespace khtml {
 class EditCommandImpl : public SharedCommandImpl
 {
 public:
-	EditCommandImpl(DOM::DocumentImpl *);
-	virtual ~EditCommandImpl();
+    EditCommandImpl(DOM::DocumentImpl *);
+    virtual ~EditCommandImpl();
 
     bool isCompositeStep() const { return parent(); }
     EditCommandImpl* parent() const;
     void setParent(EditCommandImpl *);
 
     enum ECommandState { NotApplied, Applied };
-    
-	void apply();	
-	void unapply();
-	void reapply();
+
+    void apply();
+    void unapply();
+    void reapply();
 
     virtual void doApply() = 0;
     virtual void doUnapply() = 0;
@@ -80,7 +111,7 @@ public:
 
     DOM::Selection startingSelection() const { return m_startingSelection; }
     DOM::Selection endingSelection() const { return m_endingSelection; }
-        
+
     ECommandState state() const { return m_state; }
     void setState(ECommandState state) { m_state = state; }
 
@@ -96,7 +127,7 @@ private:
     ECommandState m_state;
     DOM::Selection m_startingSelection;
     DOM::Selection m_endingSelection;
-    EditCommandImpl* m_parent;
+    RefPtr<EditCommandImpl> m_parent;
 };
 
 //------------------------------------------------------------------------------------------
@@ -117,7 +148,7 @@ protected:
     // sugary-sweet convenience functions to help create and apply edit commands in composite commands
     //
     void appendNode(DOM::NodeImpl *parent, DOM::NodeImpl *appendChild);
-    void applyCommandToComposite(EditCommand &);
+    void applyCommandToComposite(PassRefPtr<EditCommandImpl>);
     void deleteCollapsibleWhitespace();
     void deleteCollapsibleWhitespace(const DOM::Selection &selection);
     void deleteKeyPressed();
@@ -141,7 +172,7 @@ protected:
 
     DOM::ElementImpl *createTypingStyleElement() const;
 
-    QList<EditCommand> m_cmds;
+    QList<RefPtr<EditCommandImpl> > m_cmds;
 };
 
 //==========================================================================================
@@ -571,9 +602,13 @@ public:
 
     virtual bool isTypingCommand() const { return true; }
 
+    static void deleteKeyPressed0(DocumentImpl *document);
+    static void insertNewline0(DocumentImpl *document);
+    static void insertText0(DocumentImpl *document, const DOMString &text);
+
 private:
     void issueCommandForDeleteKey();
-    void removeCommand(const EditCommand &);
+    void removeCommand(const PassRefPtr<EditCommandImpl>);
     void typingAddedToOpenCommand();
     
     bool m_openForMoreTyping;
@@ -585,12 +620,14 @@ private:
 class InsertListCommandImpl : public CompositeEditCommandImpl
 {
 public:
-    typedef InsertListCommand::Type Type;
+    enum Type { OrderedList, UnorderedList };
 
     InsertListCommandImpl(DOM::DocumentImpl *document, Type type);
     virtual ~InsertListCommandImpl();
 
     virtual void doApply();
+
+    static void insertList(DocumentImpl *document, Type type);
 
 private:
     Type m_listType;

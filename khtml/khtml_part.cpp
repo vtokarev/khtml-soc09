@@ -40,7 +40,6 @@
 #include "dom/html_document.h"
 #include "dom/dom2_range.h"
 #include "editing/editor.h"
-#include "editing/htmlediting.h"
 #include "html/html_documentimpl.h"
 #include "html/html_baseimpl.h"
 #include "html/html_objectimpl.h"
@@ -3420,11 +3419,10 @@ void KHTMLPart::notifySelectionChanged(bool closeTyping)
     ed->clearTypingStyle();
 
     if (closeTyping)
-      khtml::TypingCommand::closeTyping(ed->lastEditCommand());
+        ed->closeTyping();
   }
 
   emitSelectionChanged();
-
 }
 
 void KHTMLPart::timerEvent(QTimerEvent *e)

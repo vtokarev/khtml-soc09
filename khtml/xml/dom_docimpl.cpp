@@ -83,7 +83,6 @@
 #include <html/HTMLAudioElement.h>
 #include <html/HTMLVideoElement.h>
 #include <html/HTMLSourceElement.h>
-#include <editing/htmlediting.h>
 #include <editing/jsediting.h>
 
 // SVG (WebCore)

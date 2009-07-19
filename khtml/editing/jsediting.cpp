@@ -24,7 +24,7 @@
  */
 
 #include "jsediting.h"
-#include "htmlediting.h"
+#include "editing/htmlediting_impl.h"
 #include "editor.h"
 
 #include "css/cssproperties.h"
@@ -39,9 +39,9 @@
 #include <QHash>
 #include <QString>
 
-using khtml::TypingCommand;
-using khtml::InsertListCommand;
-// 
+using khtml::TypingCommandImpl;
+using khtml::InsertListCommandImpl;
+//
 #define KPAC khtml::KHTMLPartAccessor
 
 namespace DOM {
@@ -202,7 +202,7 @@ static bool execCut(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*
 
 static bool execDelete(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*value*/)
 {
-    TypingCommand::deleteKeyPressed(KPAC::xmlDocImpl(part));
+    TypingCommandImpl::deleteKeyPressed0(KPAC::xmlDocImpl(part));
     return true;
 }
 
@@ -246,7 +246,7 @@ static bool execIndent(KHTMLPart * /*part*/, bool /*userInterface*/, const DOMSt
 
 static bool execInsertNewline(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*value*/)
 {
-    TypingCommand::insertNewline(KPAC::xmlDocImpl(part));
+    TypingCommandImpl::insertNewline0(KPAC::xmlDocImpl(part));
     return true;
 }
 
@@ -258,19 +258,19 @@ static bool execInsertParagraph(KHTMLPart * /*part*/, bool /*userInterface*/, co
 
 static bool execInsertText(KHTMLPart *part, bool /*userInterface*/, const DOMString &value)
 {
-    TypingCommand::insertText(KPAC::xmlDocImpl(part), value);
+    TypingCommandImpl::insertText0(KPAC::xmlDocImpl(part), value);
     return true;
 }
 
 static bool execInsertOrderedList(KHTMLPart *part, bool /*userInterface*/, const DOMString &value)
 {
-    InsertListCommand::insertList(KPAC::xmlDocImpl(part), InsertListCommand::OrderedList);
+    InsertListCommandImpl::insertList(KPAC::xmlDocImpl(part), InsertListCommandImpl::OrderedList);
     return true;
 }
 
 static bool execInsertUnorderedList(KHTMLPart *part, bool /*userInterface*/, const DOMString &value)
 {
-    InsertListCommand::insertList(KPAC::xmlDocImpl(part), InsertListCommand::UnorderedList);
+    InsertListCommandImpl::insertList(KPAC::xmlDocImpl(part), InsertListCommandImpl::UnorderedList);
     return true;
 }
 

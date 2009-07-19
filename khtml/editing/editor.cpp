@@ -20,9 +20,8 @@
 
 #include "editor.h"
 
-#include "edit_command.h"
-#include "htmlediting.h"
 #include "jsediting.h"
+#include "htmlediting_impl.h"
 
 #include "css/css_renderstyledeclarationimpl.h"
 #include "css/css_valueimpl.h"
@@ -50,6 +49,16 @@
         if (!js) return retval; \
         const CommandImp *imp = js->commandImp(command)
 
+using namespace WTF;
+
+using namespace DOM;
+
+using khtml::RenderStyleDeclarationImpl;
+using khtml::EditCommandImpl;
+using khtml::ApplyStyleCommandImpl;
+using khtml::TypingCommandImpl;
+using khtml::EditorContext;
+
 // --------------------------------------------------------------------------
 
 namespace DOM {
@@ -58,32 +67,24 @@ static const int sMaxUndoSteps = 1000;
 
 class EditorPrivate {
   public:
-    void registerUndo( const khtml::EditCommand& cmd, bool clearRedoStack = true ) {
+    void registerUndo(EditCommandImpl *cmd, bool clearRedoStack = true) {
         if (m_undo.count()>= sMaxUndoSteps)
             m_undo.pop_front();
         if (clearRedoStack)
             m_redo.clear();
-        m_undo.push( cmd );
+        m_undo.push(cmd);
     }
-    void registerRedo( const khtml::EditCommand& cmd ) {
+    void registerRedo(EditCommandImpl *cmd) {
         if (m_redo.count()>= sMaxUndoSteps)
             m_redo.pop_front();
-        m_redo.push( cmd );
+        m_redo.push(cmd);
     }
-    khtml::EditCommand m_lastEditCommand;
-    QStack<khtml::EditCommand> m_undo;
-    QStack<khtml::EditCommand> m_redo;
+    RefPtr<EditCommandImpl> m_lastEditCommand;
+    QStack<RefPtr<EditCommandImpl> > m_undo;
+    QStack<RefPtr<EditCommandImpl> > m_redo;
 };
 
 }
-
-
-using namespace DOM;
-using khtml::ApplyStyleCommand;
-using khtml::EditorContext;
-using khtml::EditCommand;
-using khtml::RenderStyleDeclarationImpl;
-using khtml::TypingCommand;
 
 // ==========================================================================
 
@@ -202,16 +203,16 @@ void Editor::redo()
 {
     if (d->m_redo.isEmpty())
         return;
-    EditCommand e = d->m_redo.pop();
-    e.reapply();
+    RefPtr<EditCommandImpl> e = d->m_redo.pop();
+    e->reapply();
 }
 
 void Editor::undo()
 {
     if (d->m_undo.isEmpty())
         return;
-    EditCommand e = d->m_undo.pop();
-    e.unapply();
+    RefPtr<EditCommandImpl> e = d->m_undo.pop();
+    e->unapply();
 }
 
 bool Editor::canRedo() const
@@ -236,8 +237,9 @@ void Editor::applyStyle(CSSStyleDeclarationImpl *style)
       break;
     case Selection::RANGE:
       if (m_part->xmlDocImpl() && style) {
-        ApplyStyleCommand cmd(m_part->xmlDocImpl(), style);
-        cmd.apply();
+        kDebug() << "[create ApplyStyleCommand]" << endl;
+        // FIXME
+        (new ApplyStyleCommandImpl(m_part->xmlDocImpl(), style))->apply();
       }
       break;
   }
@@ -390,67 +392,67 @@ CSSStyleDeclarationImpl *Editor::selectionComputedStyle(NodeImpl *&nodeToRemove)
   return new RenderStyleDeclarationImpl(styleElement);
 }
 
-EditCommand Editor::lastEditCommand() const
+PassRefPtr<EditCommandImpl> Editor::lastEditCommand() const
 {
   return d->m_lastEditCommand;
 }
 
-void Editor::appliedEditing(EditCommand &cmd)
+void Editor::appliedEditing(EditCommandImpl *cmd)
 {
+    kDebug() << "[Applied editing]" << endl;
   // make sure we have all the changes in rendering tree applied with relayout if needed before setting caret
   // in particular that could be required for inline boxes recomputation when inserting text
   m_part->xmlDocImpl()->updateLayout();
 
-  m_part->setCaret(cmd.endingSelection(), false);
+  m_part->setCaret(cmd->endingSelection(), false);
     // Command will be equal to last edit command only in the case of typing
   if (d->m_lastEditCommand == cmd) {
-    assert(cmd.isTypingCommand());
-  }
-  else {
+    assert(cmd->isTypingCommand());
+  } else {
         // Only register a new undo command if the command passed in is
         // different from the last command
-        d->registerUndo( cmd );
+        d->registerUndo(cmd);
         d->m_lastEditCommand = cmd;
   }
     m_part->editorContext()->m_selection.setNeedsLayout(true);
     m_part->selectionLayoutChanged();
   // ### only emit if caret pos changed
-    m_part->emitCaretPositionChanged(cmd.endingSelection().caretPos());
+    m_part->emitCaretPositionChanged(cmd->endingSelection().caretPos());
 }
 
-void Editor::unappliedEditing(EditCommand &cmd)
+void Editor::unappliedEditing(EditCommandImpl *cmd)
 {
   // see comment in appliedEditing()
   m_part->xmlDocImpl()->updateLayout();
 
-  m_part->setCaret(cmd.startingSelection());
-  d->registerRedo( cmd );
+  m_part->setCaret(cmd->startingSelection());
+  d->registerRedo(cmd);
 #ifdef APPLE_CHANGES
   KWQ(this)->respondToChangedContents();
 #else
   m_part->editorContext()->m_selection.setNeedsLayout(true);
   m_part->selectionLayoutChanged();
   // ### only emit if caret pos changed
-  m_part->emitCaretPositionChanged(cmd.startingSelection().caretPos());
+  m_part->emitCaretPositionChanged(cmd->startingSelection().caretPos());
 #endif
-  d->m_lastEditCommand = EditCommand::emptyCommand();
+  d->m_lastEditCommand = 0;
 }
 
-void Editor::reappliedEditing(EditCommand &cmd)
+void Editor::reappliedEditing(EditCommandImpl *cmd)
 {
   // see comment in appliedEditing()
   m_part->xmlDocImpl()->updateLayout();
 
-  m_part->setCaret(cmd.endingSelection());
-  d->registerUndo( cmd, false /*clearRedoStack*/ );
+  m_part->setCaret(cmd->endingSelection());
+  d->registerUndo(cmd, false /*clearRedoStack*/);
 #ifdef APPLE_CHANGES
   KWQ(this)->respondToChangedContents();
 #else
   m_part->selectionLayoutChanged();
   // ### only emit if caret pos changed
-  m_part->emitCaretPositionChanged(cmd.endingSelection().caretPos());
+  m_part->emitCaretPositionChanged(cmd->endingSelection().caretPos());
 #endif
-  d->m_lastEditCommand = EditCommand::emptyCommand();
+  d->m_lastEditCommand = 0;
 }
 
 CSSStyleDeclarationImpl *Editor::typingStyle() const
@@ -471,6 +473,13 @@ void Editor::setTypingStyle(CSSStyleDeclarationImpl *style)
 void Editor::clearTypingStyle()
 {
   setTypingStyle(0);
+}
+
+void Editor::closeTyping()
+{
+    EditCommandImpl *lastCommand = lastEditCommand().get();
+    if (lastCommand->isTypingCommand())
+        static_cast<TypingCommandImpl*>(lastCommand)->closeTyping();
 }
 
 bool Editor::handleKeyEvent(QKeyEvent *_ke)
@@ -505,14 +514,14 @@ bool Editor::handleKeyEvent(QKeyEvent *_ke)
       // fall through
     }
     case Qt::Key_Backspace:
-      TypingCommand::deleteKeyPressed(m_part->xmlDocImpl());
+      TypingCommandImpl::deleteKeyPressed0(m_part->xmlDocImpl());
       handled = true;
       break;
 
     case Qt::Key_Return:
     case Qt::Key_Enter:
 //       if (shift)
-        TypingCommand::insertNewline(m_part->xmlDocImpl());
+        TypingCommandImpl::insertNewline0(m_part->xmlDocImpl());
 //       else
 //         TypingCommand::insertParagraph(m_part->xmlDocImpl());
       handled = true;
@@ -527,7 +536,7 @@ bool Editor::handleKeyEvent(QKeyEvent *_ke)
     default:
 // handle_input:
       if (!_ke->text().isEmpty()) {
-        TypingCommand::insertText(m_part->xmlDocImpl(), _ke->text());
+        TypingCommandImpl::insertText0(m_part->xmlDocImpl(), _ke->text());
         handled = true;
       }
 

@@ -78,6 +78,7 @@ using DOM::RangeImpl;
 using DOM::Selection;
 using DOM::TextImpl;
 using DOM::TreeWalkerImpl;
+using DOM::Editor;
 
 #ifdef LOG_DISABLED
 #define debugPosition(a,b) ((void)0)
@@ -247,10 +248,8 @@ void EditCommandImpl::apply()
 
     m_state = Applied;
 
-    if (!isCompositeStep()) {
-        EditCommand cmd(this);
-        m_document->part()->editor()->appliedEditing(cmd);
-    }
+    if (!isCompositeStep())
+        m_document->part()->editor()->appliedEditing(this);
 }
 
 void EditCommandImpl::unapply()
@@ -263,10 +262,8 @@ void EditCommandImpl::unapply()
 
     m_state = NotApplied;
 
-    if (!isCompositeStep()) {
-        EditCommand cmd(this);
-        m_document->part()->editor()->unappliedEditing(cmd);
-    }
+    if (!isCompositeStep())
+        m_document->part()->editor()->unappliedEditing(this);
 }
 
 void EditCommandImpl::reapply()
@@ -279,10 +276,8 @@ void EditCommandImpl::reapply()
 
     m_state = Applied;
 
-    if (!isCompositeStep()) {
-        EditCommand cmd(this);
-        m_document->part()->editor()->reappliedEditing(cmd);
-    }
+    if (!isCompositeStep())
+        m_document->part()->editor()->reappliedEditing(this);
 }
 
 void EditCommandImpl::doReapply()
@@ -293,26 +288,26 @@ void EditCommandImpl::doReapply()
 void EditCommandImpl::setStartingSelection(const Selection &s)
 {
     m_startingSelection = s;
-    EditCommand cmd( parent() );
-    while (cmd.notNull()) {
-        cmd.handle()->m_startingSelection = s;
-        cmd = cmd.handle()->parent();
+    EditCommandImpl *cmd = parent();
+    while (cmd) {
+        cmd->m_startingSelection = s;
+        cmd = cmd->parent();
     }
 }
 
 void EditCommandImpl::setEndingSelection(const Selection &s)
 {
     m_endingSelection = s;
-    EditCommand cmd = parent();
-    while (cmd.notNull()) {
-        cmd.handle()->m_endingSelection = s;
-        cmd = cmd.handle()->parent();
+    EditCommandImpl *cmd = parent();
+    while (cmd) {
+        cmd->m_endingSelection = s;
+        cmd = cmd->parent();
     }
 }
 
 EditCommandImpl* EditCommandImpl::parent() const
 {
-    return m_parent;
+    return m_parent.get();
 }
 
 void EditCommandImpl::setParent(EditCommandImpl* cmd)
@@ -339,7 +334,7 @@ void CompositeEditCommandImpl::doUnapply()
     }
 
     for (int i = m_cmds.count() - 1; i >= 0; --i)
-        m_cmds[i].unapply();
+        m_cmds[i]->unapply();
 
     setState(NotApplied);
 }
@@ -349,9 +344,9 @@ void CompositeEditCommandImpl::doReapply()
     if (m_cmds.count() == 0) {
         return;
     }
-    QMutableListIterator<EditCommand> it(m_cmds);
+    QMutableListIterator<RefPtr<EditCommandImpl> > it(m_cmds);
     while (it.hasNext())
-        it.next().reapply();
+        it.next()->reapply();
 
     setState(Applied);
 }
@@ -359,18 +354,18 @@ void CompositeEditCommandImpl::doReapply()
 //
 // sugary-sweet convenience functions to help create and apply edit commands in composite commands
 //
-void CompositeEditCommandImpl::applyCommandToComposite(EditCommand &cmd)
+void CompositeEditCommandImpl::applyCommandToComposite(PassRefPtr<EditCommandImpl> cmd)
 {
-    cmd.setStartingSelection(endingSelection());//###?
-    cmd.setEndingSelection(endingSelection());
-    cmd.handle()->setParent(this);
-    cmd.apply();
+    cmd->setStartingSelection(endingSelection());//###?
+    cmd->setEndingSelection(endingSelection());
+    cmd->setParent(this);
+    cmd->apply();
     m_cmds.append(cmd);
 }
 
 void CompositeEditCommandImpl::insertNodeBefore(NodeImpl *insertChild, NodeImpl *refChild)
 {
-    InsertNodeBeforeCommand cmd(document(), insertChild, refChild);
+    RefPtr<InsertNodeBeforeCommandImpl> cmd = new InsertNodeBeforeCommandImpl(document(), insertChild, refChild);
     applyCommandToComposite(cmd);
 }
 
@@ -410,71 +405,71 @@ void CompositeEditCommandImpl::insertNodeAt(NodeImpl *insertChild, NodeImpl *ref
 
 void CompositeEditCommandImpl::appendNode(NodeImpl *parent, NodeImpl *appendChild)
 {
-    AppendNodeCommand cmd(document(), parent, appendChild);
+    RefPtr<AppendNodeCommandImpl> cmd = new AppendNodeCommandImpl(document(), parent, appendChild);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::removeNode(NodeImpl *removeChild)
 {
-    RemoveNodeCommand cmd(document(), removeChild);
+    RefPtr<RemoveNodeCommandImpl> cmd = new RemoveNodeCommandImpl(document(), removeChild);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::removeNodeAndPrune(NodeImpl *pruneNode, NodeImpl *stopNode)
 {
-    RemoveNodeAndPruneCommand cmd(document(), pruneNode, stopNode);
+    RefPtr<RemoveNodeAndPruneCommandImpl> cmd = new RemoveNodeAndPruneCommandImpl(document(), pruneNode, stopNode);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::removeNodePreservingChildren(NodeImpl *removeChild)
 {
-    RemoveNodePreservingChildrenCommand cmd(document(), removeChild);
+    RefPtr<RemoveNodePreservingChildrenCommandImpl> cmd = new RemoveNodePreservingChildrenCommandImpl(document(), removeChild);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::splitTextNode(TextImpl *text, long offset)
 {
-    SplitTextNodeCommand cmd(document(), text, offset);
+    RefPtr<SplitTextNodeCommandImpl> cmd = new SplitTextNodeCommandImpl(document(), text, offset);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::joinTextNodes(TextImpl *text1, TextImpl *text2)
 {
-    JoinTextNodesCommand cmd(document(), text1, text2);
+    RefPtr<JoinTextNodesCommandImpl> cmd = new JoinTextNodesCommandImpl(document(), text1, text2);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::inputText(const DOMString &text)
 {
-    InputTextCommand cmd(document());
+    RefPtr<InputTextCommandImpl> cmd = new InputTextCommandImpl(document());
     applyCommandToComposite(cmd);
-    cmd.input(text);
+    cmd->input(text);
 }
 
 void CompositeEditCommandImpl::insertText(TextImpl *node, long offset, const DOMString &text)
 {
-    InsertTextCommand cmd(document(), node, offset, text);
+    RefPtr<InsertTextCommandImpl> cmd = new InsertTextCommandImpl(document(), node, offset, text);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::deleteText(TextImpl *node, long offset, long count)
 {
-    DeleteTextCommand cmd(document(), node, offset, count);
+    RefPtr<DeleteTextCommandImpl> cmd = new DeleteTextCommandImpl(document(), node, offset, count);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::replaceText(TextImpl *node, long offset, long count, const DOMString &replacementText)
 {
-    DeleteTextCommand deleteCommand(document(), node, offset, count);
+    RefPtr<DeleteTextCommandImpl> deleteCommand = new DeleteTextCommandImpl(document(), node, offset, count);
     applyCommandToComposite(deleteCommand);
-    InsertTextCommand insertCommand(document(), node, offset, replacementText);
+    RefPtr<InsertTextCommandImpl> insertCommand = new InsertTextCommandImpl(document(), node, offset, replacementText);
     applyCommandToComposite(insertCommand);
 }
 
 void CompositeEditCommandImpl::deleteSelection()
 {
     if (endingSelection().state() == Selection::RANGE) {
-        DeleteSelectionCommand cmd(document());
+        RefPtr<DeleteSelectionCommandImpl> cmd = new DeleteSelectionCommandImpl(document());
         applyCommandToComposite(cmd);
     }
 }
@@ -482,38 +477,38 @@ void CompositeEditCommandImpl::deleteSelection()
 void CompositeEditCommandImpl::deleteSelection(const Selection &selection)
 {
     if (selection.state() == Selection::RANGE) {
-        DeleteSelectionCommand cmd(document(), selection);
+        RefPtr<DeleteSelectionCommandImpl> cmd = new DeleteSelectionCommandImpl(document(), selection);
         applyCommandToComposite(cmd);
     }
 }
 
 void CompositeEditCommandImpl::deleteCollapsibleWhitespace()
 {
-    DeleteCollapsibleWhitespaceCommand cmd(document());
+    RefPtr<DeleteCollapsibleWhitespaceCommandImpl> cmd = new DeleteCollapsibleWhitespaceCommandImpl(document());
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::deleteCollapsibleWhitespace(const Selection &selection)
 {
-    DeleteCollapsibleWhitespaceCommand cmd(document(), selection);
+    RefPtr<DeleteCollapsibleWhitespaceCommandImpl> cmd = new DeleteCollapsibleWhitespaceCommandImpl(document(), selection);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::removeCSSProperty(CSSStyleDeclarationImpl *decl, int property)
 {
-    RemoveCSSPropertyCommand cmd(document(), decl, property);
+    RefPtr<RemoveCSSPropertyCommandImpl> cmd = new RemoveCSSPropertyCommandImpl(document(), decl, property);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::removeNodeAttribute(ElementImpl *element, int attribute)
 {
-    RemoveNodeAttributeCommand cmd(document(), element, attribute);
+    RefPtr<RemoveNodeAttributeCommandImpl> cmd = new RemoveNodeAttributeCommandImpl(document(), element, attribute);
     applyCommandToComposite(cmd);
 }
 
 void CompositeEditCommandImpl::setNodeAttribute(ElementImpl *element, int attribute, const DOMString &value)
 {
-    SetNodeAttributeCommand cmd(document(), element, attribute, value);
+    RefPtr<SetNodeAttributeCommandImpl> cmd = new SetNodeAttributeCommandImpl(document(), element, attribute, value);
     applyCommandToComposite(cmd);
 }
 
@@ -813,7 +808,7 @@ bool ApplyStyleCommandImpl::splitTextAtStartIfNeeded(const Position &start, cons
     if (start.node()->isTextNode() && start.offset() > start.node()->caretMinOffset() && start.offset() < start.node()->caretMaxOffset()) {
         long endOffsetAdjustment = start.node() == end.node() ? start.offset() : 0;
         TextImpl *text = static_cast<TextImpl *>(start.node());
-        SplitTextNodeCommand cmd(document(), text, start.offset());
+        RefPtr<SplitTextNodeCommandImpl> cmd = new SplitTextNodeCommandImpl(document(), text, start.offset());
         applyCommandToComposite(cmd);
         setEndingSelection(Selection(Position(start.node(), 0), Position(end.node(), end.offset() - endOffsetAdjustment)));
         return true;
@@ -825,12 +820,12 @@ NodeImpl *ApplyStyleCommandImpl::splitTextAtEndIfNeeded(const Position &start, c
 {
     if (end.node()->isTextNode() && end.offset() > end.node()->caretMinOffset() && end.offset() < end.node()->caretMaxOffset()) {
         TextImpl *text = static_cast<TextImpl *>(end.node());
-        SplitTextNodeCommand cmd(document(), text, end.offset());
+        RefPtr<SplitTextNodeCommandImpl> cmd = new SplitTextNodeCommandImpl(document(), text, end.offset());
         applyCommandToComposite(cmd);
-        NodeImpl *startNode = start.node() == end.node() ? cmd.node()->previousSibling() : start.node();
+        NodeImpl *startNode = start.node() == end.node() ? cmd->node()->previousSibling() : start.node();
         assert(startNode);
-        setEndingSelection(Selection(Position(startNode, start.offset()), Position(cmd.node()->previousSibling(), cmd.node()->previousSibling()->caretMaxOffset())));
-        return cmd.node()->previousSibling();
+        setEndingSelection(Selection(Position(startNode, start.offset()), Position(cmd->node()->previousSibling(), cmd->node()->previousSibling()->caretMaxOffset())));
+        return cmd->node()->previousSibling();
     }
     return end.node();
 }
@@ -940,11 +935,10 @@ ApplyStyleCommandImpl::StyleChange ApplyStyleCommandImpl::computeStyleChange(con
 Position ApplyStyleCommandImpl::positionInsertionPoint(Position pos)
 {
     if (pos.node()->isTextNode() && (pos.offset() > 0 && pos.offset() < pos.node()->maxOffset())) {
-        SplitTextNodeCommand split(document(), static_cast<TextImpl *>(pos.node()), pos.offset());
-        split.apply();
-        pos = Position(split.node(), 0);
+        RefPtr<SplitTextNodeCommandImpl> split = new SplitTextNodeCommandImpl(document(), static_cast<TextImpl *>(pos.node()), pos.offset());
+        split->apply();
+        pos = Position(split->node(), 0);
     }
-
 #if 0
     // EDIT FIXME: If modified to work with the internals of applying style,
     // this code can work to optimize cases where a style change is taking place on
@@ -1699,9 +1693,9 @@ Position InputTextCommandImpl::prepareForTextInsertion(bool adjustDownstream)
             if (pos.node()->isTextNode() && pos.offset() > pos.node()->caretMinOffset() && pos.offset() < pos.node()->caretMaxOffset()) {
                 // Need to split current text node in order to insert a span.
                 TextImpl *text = static_cast<TextImpl *>(pos.node());
-                SplitTextNodeCommand cmd(document(), text, pos.offset());
+                RefPtr<SplitTextNodeCommandImpl> cmd = new SplitTextNodeCommandImpl(document(), text, pos.offset());
                 applyCommandToComposite(cmd);
-                setEndingSelection(Position(cmd.node(), 0));
+                setEndingSelection(Position(cmd->node(), 0));
             }
 
             int exceptionCode = 0;
@@ -2063,7 +2057,7 @@ void MoveSelectionCommandImpl::doApply()
     deleteSelection();
 
     setEndingSelection(Position(positionNode, positionOffset));
-    ReplaceSelectionCommand cmd(document(), m_fragment, true);
+    RefPtr<ReplaceSelectionCommandImpl> cmd = new ReplaceSelectionCommandImpl(document(), m_fragment, true);
     applyCommandToComposite(cmd);
 }
 
@@ -2385,26 +2379,24 @@ void TypingCommandImpl::typingAddedToOpenCommand()
 {
     assert(document());
     assert(document()->part());
-    EditCommand cmd(this);
-    document()->part()->editor()->appliedEditing(cmd);
+    document()->part()->editor()->appliedEditing(this);
 }
 
 void TypingCommandImpl::insertText(const DOMString &text)
 {
     if (document()->part()->editor()->typingStyle() || m_cmds.count() == 0) {
-        InputTextCommand cmd(document());
+        RefPtr<InputTextCommandImpl> cmd = new InputTextCommandImpl(document());
         applyCommandToComposite(cmd);
-        cmd.input(text);
+        cmd->input(text);
     }
     else {
-        EditCommand lastCommand = m_cmds.last();
-        if (lastCommand.isInputTextCommand()) {
-            static_cast<InputTextCommand &>(lastCommand).input(text);
-        }
-        else {
-            InputTextCommand cmd(document());
+        EditCommandImpl *lastCommand = m_cmds.last().get();
+        if (lastCommand->isInputTextCommand()) {
+            static_cast<InputTextCommandImpl*>(lastCommand)->input(text);
+        } else {
+            RefPtr<InputTextCommandImpl> cmd = new InputTextCommandImpl(document());
             applyCommandToComposite(cmd);
-            cmd.input(text);
+            cmd->input(text);
         }
     }
     typingAddedToOpenCommand();
@@ -2412,7 +2404,7 @@ void TypingCommandImpl::insertText(const DOMString &text)
 
 void TypingCommandImpl::insertNewline()
 {
-    InputNewlineCommand cmd(document());
+    RefPtr<InputNewlineCommandImpl> cmd = new InputNewlineCommandImpl(document());
     applyCommandToComposite(cmd);
     typingAddedToOpenCommand();
 }
@@ -2471,7 +2463,7 @@ void TypingCommandImpl::deleteKeyPressed()
 #endif
 }
 
-void TypingCommandImpl::removeCommand(const EditCommand &cmd)
+void TypingCommandImpl::removeCommand(const PassRefPtr<EditCommandImpl> cmd)
 {
     // NOTE: If the passed-in command is the last command in the
     // composite, we could remove all traces of this typing command
@@ -2482,8 +2474,58 @@ void TypingCommandImpl::removeCommand(const EditCommand &cmd)
     if (m_cmds.count() == 0)
         setEndingSelection(startingSelection());
     else
-        setEndingSelection(m_cmds.last().endingSelection());
+        setEndingSelection(m_cmds.last()->endingSelection());
 }
+
+static bool isOpenForMoreTypingCommand(const EditCommandImpl *command)
+{
+    return command && command->isTypingCommand() &&
+        static_cast<const TypingCommandImpl*>(command)->openForMoreTyping();
+}
+
+void TypingCommandImpl::deleteKeyPressed0(DocumentImpl *document)
+{
+    Editor *editor = document->part()->editor();
+    // FIXME reenable after properly modify selection of the lastEditCommand
+    // if (isOpenForMoreTypingCommand(lastEditCommand)) {
+    //     static_cast<TypingCommand &>(lastEditCommand).deleteKeyPressed();
+    // } else {
+    RefPtr<TypingCommandImpl> command = new TypingCommandImpl(document);
+    command->apply();
+    command->deleteKeyPressed();
+    // }
+}
+
+void TypingCommandImpl::insertNewline0(DocumentImpl *document)
+{
+    assert(document);
+    Editor *ed = document->part()->editor();
+    assert(ed);
+    EditCommandImpl *lastEditCommand = ed->lastEditCommand().get();
+    if (isOpenForMoreTypingCommand(lastEditCommand)) {
+        static_cast<TypingCommandImpl*>(lastEditCommand)->insertNewline();
+    } else {
+        RefPtr<TypingCommandImpl> command = new TypingCommandImpl(document);
+        command->apply();
+        command->insertNewline();
+    }
+}
+
+void TypingCommandImpl::insertText0(DocumentImpl *document, const DOMString &text)
+{
+    assert(document);
+    Editor *ed = document->part()->editor();
+    assert(ed);
+    EditCommandImpl *lastEditCommand = ed->lastEditCommand().get();
+    if (isOpenForMoreTypingCommand(lastEditCommand)) {
+        static_cast<TypingCommandImpl*>(lastEditCommand)->insertText(text);
+    } else {
+        RefPtr<TypingCommandImpl> command = new TypingCommandImpl(document);
+        command->apply();
+        command->insertText(text);
+    }
+}
+
 
 //------------------------------------------------------------------------------------------
 // InsertListCommandImpl
@@ -2554,7 +2596,7 @@ void InsertListCommandImpl::doApply()
                 removeNode(startBlock);
             }
         } else {
-            ElementImpl *ol = document()->createHTMLElement(m_listType == InsertListCommand::OrderedList ? "OL" : "UL");
+            ElementImpl *ol = document()->createHTMLElement(m_listType == OrderedList ? "OL" : "UL");
             ElementImpl *li = document()->createHTMLElement("LI");
             appendNode(ol, li);
             NodeImpl *nextNode;
@@ -2569,6 +2611,12 @@ void InsertListCommandImpl::doApply()
     } else {
         kDebug() << "[different blocks are not supported yet]" << endl;
     }
+}
+
+void InsertListCommandImpl::insertList(DocumentImpl *document, Type type)
+{
+    RefPtr<InsertListCommandImpl> insertCommand = new InsertListCommandImpl(document, type);
+    insertCommand->apply();
 }
 
 //------------------------------------------------------------------------------------------
