@@ -27,6 +27,8 @@
 
 #include <QObject>
 
+#include "wtf/PassRefPtr.h"
+
 class QKeyEvent;
 
 class KHTMLPart;
