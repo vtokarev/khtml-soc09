@@ -405,6 +405,9 @@ Position Position::equivalentUpstreamPosition() const
         }
     }
 
+    if (it.current().node()->enclosingBlockFlowElement() != block)
+        return it.next();
+
     return it.current();
 }
 
@@ -453,6 +456,9 @@ Position Position::equivalentDownstreamPosition() const
             }
         }
     }
+
+    if (it.current().node()->enclosingBlockFlowElement() != block)
+        return it.previous();
 
     return it.current();
 }
