@@ -478,7 +478,7 @@ void Editor::clearTypingStyle()
 void Editor::closeTyping()
 {
     EditCommandImpl *lastCommand = lastEditCommand().get();
-    if (lastCommand->isTypingCommand())
+    if (lastCommand && lastCommand->isTypingCommand())
         static_cast<TypingCommandImpl*>(lastCommand)->closeTyping();
 }
 
