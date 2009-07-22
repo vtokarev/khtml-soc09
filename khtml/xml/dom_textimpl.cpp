@@ -273,6 +273,14 @@ unsigned long CharacterDataImpl::caretMaxRenderedOffset() const
     return r ? r->caretMaxRenderedOffset() : length();
 }
 
+
+bool CharacterDataImpl::rendererIsNeeded(khtml::RenderStyle *style)
+{
+    if (!str || !str->l)
+        return false;
+    return NodeImpl::rendererIsNeeded(style);
+}
+
 // ---------------------------------------------------------------------------
 
 DOMString CommentImpl::nodeName() const
