@@ -1588,6 +1588,8 @@ void InputNewlineCommandImpl::doApply()
         setEndingSelection(Position(pos.node(), 0));
     } else {
         // Split a text node
+        // FIXME it's possible that we create empty text node now if we're at the end of text
+        // maybe we should handle this case specially and not create it
         kDebug(6200) << "input newline case 3";
         assert(pos.node()->isTextNode());
         TextImpl *textNode = static_cast<TextImpl *>(pos.node());
