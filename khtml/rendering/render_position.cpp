@@ -206,16 +206,15 @@ RenderPosition RenderPosition::previousLinePosition(int x)
 
 RenderPosition RenderPosition::nextLinePosition(int x)
 {
+    kDebug() << "[Next line at x]" << x << endl;
+    if (!renderer()) return *this;
+
+    int rOffset;
     NodeImpl* node = m_position.node();
-    if (!node)
-        return Position();
-
-    if (!node->renderer())
-        return *this;
-
-    InlineBox *box = node->renderer()->inlineBox(m_position.offset());
+    InlineBox *box = getInlineBoxAndOffset(rOffset);
     if (!box)
         return *this;
+    kDebug() << "[box;offset]" << box << rOffset << endl;
 
     RenderBlock *containingBlock = 0;
     RootInlineBox *root = box->root()->nextRootBox();
