@@ -50,7 +50,7 @@ endif(UNIX AND Q_WS_X11)
 #required features:
 # Perl is used e.g. in khtml, kjs, kjsembed and others
 find_package(Perl)
-macro_log_feature(PERL_FOUND "Perl" "Practical Extraction and Report Language" "http://www.perl.org" TRUE "" "Required by the KDE buildsystem.")
+macro_log_feature(PERL_FOUND "Perl" "Perl Programming Language" "http://www.perl.org" TRUE "" "Required by the KDE buildsystem.")
 
 find_package(ZLIB)
 macro_log_feature(ZLIB_FOUND "ZLib" "The Zlib compression library" "http://www.zlib.net" TRUE "" "Required by the core KDE libraries and some critical kioslaves.")
@@ -63,6 +63,10 @@ macro_log_feature(STRIGI_FOUND "Strigi" "A fast and small desktop searching prog
 if(X11_FOUND)
   #X11_Xrender discovery is done by FindX11
   macro_log_feature(X11_Xrender_FOUND "X Rendering extension" "an X Window System extension for image compositing" "http://www.x.org" FALSE "" "STRONGLY RECOMMENDED: For compositing, rendering operations, and alpha-blending.")
+  macro_bool_to_01(X11_Xscreensaver_FOUND HAVE_XSCREENSAVER)
+  macro_bool_to_01(X11_XSync_FOUND HAVE_XSYNC)
+  macro_log_feature(HAVE_XSCREENSAVER "libxss" "XScreenSaver Library" "http://www.x.org/" FALSE "" "Needed to enable fallback query methods in KIdleTime")
+  macro_log_feature(HAVE_XSYNC "libxext" "XSync Extension" "http://www.x.org/" FALSE "" "Needed to enable high efficency query in KIdleTime. Strongly recommended.")
 endif(X11_FOUND)
 
 macro_optional_find_package(BZip2)

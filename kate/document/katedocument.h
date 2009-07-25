@@ -61,6 +61,7 @@ class KateDocumentConfig;
 class KateHighlighting;
 class KateSmartManager;
 class KateUndoManager;
+class KateOnTheFlyChecker;
 
 
 class KateTemplateHandler;
@@ -204,9 +205,9 @@ class KateDocument : public KTextEditor::Document,
      * them.
      * @param withUndo if true, add undo history
      */
-    void editStart (bool withUndo = true, Kate::EditSource editSource = Kate::NoEditSource);
+    void editStart (Kate::EditSource editSource = Kate::NoEditSource);
     /** Same as editStart() with undo */
-    void editBegin (Kate::EditSource editSource = Kate::NoEditSource) { editStart(true, editSource); }
+    void editBegin (Kate::EditSource editSource = Kate::NoEditSource) { editStart(editSource); }
     /**
      * End a editor operation.
      * @see editStart()
@@ -216,7 +217,7 @@ class KateDocument : public KTextEditor::Document,
     void pushEditState();
     void popEditState();
 
-    bool startEditing () { editStart (true, Kate::ThirdPartyEdit); return true; }
+    bool startEditing () { editStart (Kate::ThirdPartyEdit); return true; }
     bool endEditing () { editEnd (); return true; }
 
 //END editStart/editEnd
@@ -317,13 +318,6 @@ class KateDocument : public KTextEditor::Document,
 
     bool isEditRunning() const;
 
-    /**
-     * States whether the edit currently in progress has undo enabled.
-     *
-     * The method may only be called when an edit is actually in progress, i.e. isEditRunning() is true.
-     */
-    bool isWithUndo() const;
-
     void setMergeAllEdits(bool merge);
 
   private:
@@ -331,7 +325,6 @@ class KateDocument : public KTextEditor::Document,
     QStack<int> editStateStack;
     QStack<Kate::EditSource> m_editSources;
     bool editIsRunning;
-    bool editWithUndo;
 
   //
   // KTextEditor::UndoInterface stuff
@@ -676,9 +669,7 @@ class KateDocument : public KTextEditor::Document,
   Q_SIGNALS:
     void dynamicHighlightAdded(KateSmartRange* range);
     void dynamicHighlightRemoved(KateSmartRange* range);
-    void respellCheckBlock(KateDocument *document,int start, int end);
   public Q_SLOTS:
-    void respellCheckBlock(int start, int end) {respellCheckBlock(this,start,end);}
     virtual void removeHighlightFromDocument(KTextEditor::SmartRange* topRange);
     virtual void removeActionsFromDocument(KTextEditor::SmartRange* topRange);
 
@@ -1150,18 +1141,33 @@ class KateDocument : public KTextEditor::Document,
       static LoadSaveFilterCheckPlugins* loadSaveFilterCheckPlugins();
 
   public:
-      QString dictionary();
-      QList<QPair<KTextEditor::SmartRange*, QString> > dictionaryRanges();
+      QString defaultDictionary() const;
+      QList<QPair<KTextEditor::SmartRange*, QString> > dictionaryRanges() const;
+      bool isOnTheFlySpellCheckingEnabled() const;
 
   public Q_SLOTS:
-      void setDictionary(const QString& dict);
+      void clearDictionaryRanges();
+      void setDictionary(const QString& dict, const KTextEditor::Range &range);
+      void revertToDefaultDictionary(const KTextEditor::Range &range);
+      void setDefaultDictionary(const QString& dict);
       void onTheFlySpellCheckingEnabled(bool enable);
-  public:
-      bool isOnTheFlySpellCheckingEnabled();
-      
+      void respellCheckBlock(int start, int end) {respellCheckBlock(this,start,end);}
+
+  protected Q_SLOTS:
+      void dictionaryRangeEliminated(KTextEditor::SmartRange *smartRange);
+      void deleteDiscardedSmartRanges();
+
+  Q_SIGNALS:
+      void respellCheckBlock(KateDocument *document,int start, int end);
+
   protected:
-      QString m_dictionary;
+      KateOnTheFlyChecker *m_onTheFlyChecker;
+      QString m_defaultDictionary;
       QList<QPair<KTextEditor::SmartRange*, QString> > m_dictionaryRanges;
+      QList<KTextEditor::SmartRange*> m_discardedSmartRanges;
+      KTextEditor::SmartRangeNotifier *m_dictionaryRangeNotifier;
+
+      KTextEditor::SmartRangeNotifier* dictionaryRangeNotifier();
 };
 
 #endif

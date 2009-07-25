@@ -20,10 +20,26 @@
 */
 
 
-#include "kio_help.h"
-#include <QDir>
-
 #include <config.h>
+
+#include "kio_help.h"
+#include "xslt.h"
+
+#include <kdebug.h>
+#include <kde_file.h>
+#include <kurl.h>
+#include <kglobal.h>
+#include <klocale.h>
+#include <kstandarddirs.h>
+#include <kcomponentdata.h>
+
+#include <QtCore/QDir>
+#include <QtCore/QFileInfo>
+#include <QtCore/QFile>
+#include <QtCore/QRegExp>
+#include <QtCore/QTextCodec>
+#include <QtGui/QTextDocument>
+
 
 #ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>
@@ -41,23 +57,8 @@
 # include <stdlib.h>
 #endif
 
-#include <QtCore/QFileInfo>
-#include <QtCore/QFile>
-#include <QtCore/QRegExp>
-#include <QtCore/QTextCodec>
-#include <QtGui/QTextDocument>
-
-#include <kdebug.h>
-#include <kde_file.h>
-#include <kurl.h>
-#include <kglobal.h>
-#include <klocale.h>
-#include <kstandarddirs.h>
-#include <kcomponentdata.h>
-
 #include <libxslt/xsltutils.h>
 #include <libxslt/transform.h>
-#include "xslt.h"
 
 using namespace KIO;
 
@@ -145,9 +146,15 @@ QString HelpProtocol::lookupFile(const QString &fname,
 
 void HelpProtocol::unicodeError( const QString &t )
 {
+#ifdef Q_WS_WIN
+   QString encoding = "UTF-8";
+#else
+   QString encoding = QTextCodec::codecForLocale()->name();
+#endif   
    data(fromUnicode( QString(
         "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=%1\"></head>\n"
-        "%2</html>" ).arg( QString( QTextCodec::codecForLocale()->name() ), Qt::escape(t) ) ) );
+        "%2</html>" ).arg( encoding, Qt::escape(t) ) ) );
+     
 }
 
 HelpProtocol *slave = 0;
@@ -321,8 +328,8 @@ void HelpProtocol::get( const KUrl& url )
                         filename = filename.left( filename.indexOf( '\"' ) );
                         QString path = target.path();
                         path = path.left( path.lastIndexOf( '/' ) + 1) + filename;
-                        kDebug( 7119 ) << "anchor found in " << path;
                         target.setPath( path );
+                        kDebug( 7119 ) << "anchor found in " << target.url();
                         break;
                     }
                     index++;

@@ -342,7 +342,13 @@ KFileWidget::KFileWidget( const KUrl& _startDir, QWidget *parent )
     d->url = getStartUrl( startDir, d->fileClass, filename );
     startDir = d->url;
 
-    d->urlNavigator = new KUrlNavigator(d->model, startDir, d->opsWidget); //d->toolbar);
+    // Don't pass startDir to the KUrlNavigator at this stage: as well as
+    // the above, it may also contain a file name which should not get
+    // inserted in that form into the old-style navigation bar history.
+    // Wait until the KIO::stat has been done later.
+    //
+    // The stat cannot be done before this point, bug 172678.
+    d->urlNavigator = new KUrlNavigator(d->model, KUrl(), d->opsWidget); //d->toolbar);
     d->urlNavigator->setPlacesSelectorVisible(false);
     opsWidgetLayout->addWidget(d->urlNavigator);
 
@@ -584,15 +590,24 @@ KFileWidget::KFileWidget( const KUrl& _startDir, QWidget *parent )
         coll->action("inline preview")->setChecked(pg->isPreviewShown());
     }
 
+    // getStartUrl() above will have resolved the startDir parameter into
+    // a directory and file name in the two cases: (a) where it is a	
+    // special "kfiledialog:" URL, or (b) where it is a plain file name
+    // only without directory or protocol.  For any other startDir
+    // specified, it is not possible to resolve whether there is a file name
+    // present just by looking at the URL; the only way to be sure is
+    // to stat it.
     bool statRes = false;
-    if ( filename.isEmpty() ) {
+    if ( filename.isEmpty() )
+    {
         KIO::StatJob *statJob = KIO::stat(startDir, KIO::HideProgressInfo);
         statRes = KIO::NetAccess::synchronousRun(statJob, 0);
+        kDebug(kfile_area) << "stat of" << startDir << "-> statRes" << statRes << "isDir" << statJob->statResult().isDir();
         if (!statRes || !statJob->statResult().isDir()) {
             filename = startDir.fileName();
             startDir.setPath(startDir.directory());
+            kDebug(kfile_area) << "statJob -> startDir" << startDir << "filename" << filename;
         }
-        kDebug(kfile_area) << "statJob found filename" << filename;
     }
 
     d->ops->setUrl(startDir, true);
@@ -2526,12 +2541,20 @@ KUrl KFileWidget::getStartUrl( const KUrl& startDir,
 
             ret = KUrl( KRecentDirs::dir(recentDirClass) );
         }
-        else
+        else						// not special "kfiledialog" URL
         {
-            ret = startDir;
-            // If we won't be able to list it (e.g. http), then use default
-            if ( !KProtocolManager::supportsListing( ret ) )
+            if (!startDir.directory().isEmpty())	// has directory, maybe with filename
+            {
+                ret = startDir;				// will be checked by stat later
+                // If we won't be able to list it (e.g. http), then use default
+                if ( !KProtocolManager::supportsListing( ret ) )
+                    useDefaultStartDir = true;
+            }
+            else					// file name only
+            {
+                fileName = startDir.fileName();
                 useDefaultStartDir = true;
+            }
         }
     }
 
@@ -2553,7 +2576,7 @@ KUrl KFileWidget::getStartUrl( const KUrl& startDir,
         ret = *lastDirectory;
     }
 
-    kDebug(kfile_area) << "for" << startDir << "ret" << ret << "recentDirClass" << recentDirClass << "fileName" << fileName;
+    kDebug(kfile_area) << "for" << startDir << "->" << ret << "recentDirClass" << recentDirClass << "fileName" << fileName;
     return ret;
 }
 

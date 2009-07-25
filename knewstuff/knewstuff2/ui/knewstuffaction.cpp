@@ -17,27 +17,30 @@
 */
 
 #include <kaction.h>
-#include <kicon.h>
 #include <klocale.h>
 #include <kactioncollection.h>
 
-#include "knewstuff2/ui/knewstuffaction.h"
+#include "knewstuffaction.h"
 
 using namespace KNS;
 
-KAction* KNS::standardAction(const QString& what,
-                             const QObject *recvr,
-                             const char *slot, KActionCollection* parent,
+KAction *KNS::standardAction(const QString &what,
+                             const QObject *receiver,
+                             const char *slot, KActionCollection *parent,
                              const char *name)
 {
-    QString data = what;
-    if (data.isEmpty()) {
-        data = i18nc("Hot new stuff offers to Download New Data. Apps can fill in an individual string here, but Data is the default. This is in an action that gets displayed in the menu or toolbar for example.", "Download New Data...");
-    }
-    KAction *action = new KAction(data, parent);
+    return standardAction(what, receiver, slot, parent, QString(name));
+}
+
+KAction *KNS::standardAction(const QString &what,
+                             const QObject *receiver,
+                             const char *slot, KActionCollection *parent,
+                             const QString &name)
+{
+    KAction *action = new KAction(what, parent);
     parent->addAction(name, action);
     action->setIcon(KIcon("get-hot-new-stuff"));
-    QObject::connect(action, SIGNAL(triggered(bool)), recvr, slot);
+    QObject::connect(action, SIGNAL(triggered(bool)), receiver, slot);
 
     return action;
 }

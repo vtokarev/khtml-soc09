@@ -249,7 +249,6 @@ public:
 KIntSpinBox::KIntSpinBox(QWidget *parent)
     : QSpinBox(parent), d(new KIntSpinBoxPrivate(this))
 {
-    lineEdit()->setAlignment(Qt::AlignRight);
     setValue(0);
 }
 
@@ -263,7 +262,6 @@ KIntSpinBox::KIntSpinBox(int lower, int upper, int singleStep, int value, QWidge
 {
     setRange(lower, upper);
     setSingleStep(singleStep);
-    lineEdit()->setAlignment(Qt::AlignRight);
     setValue(value);
 }
 
@@ -536,7 +534,7 @@ QSize KIntNumInput::minimumSizeHint() const
     int w;
     int h;
 
-    h = 2 + qMax(d->intSpinBoxSize.height(), priv->sliderSize.height());
+    h = qMax(d->intSpinBoxSize.height(), priv->sliderSize.height());
 
     // if in extra row, then count it here
     if (priv->label && (priv->labelAlignment & (Qt::AlignBottom | Qt::AlignTop))) {
@@ -723,7 +721,6 @@ void KDoubleNumInput::init(double value, double lower, double upper,
     d->spin->setSingleStep(singleStep);
     d->spin->setValue(value);
     d->spin->setDecimals(precision);
-    d->spin->setAlignment(Qt::AlignRight);
 
     d->spin->setObjectName("KDoubleNumInput::QDoubleSpinBox");
     setFocusProxy(d->spin);
@@ -797,7 +794,7 @@ QSize KDoubleNumInput::minimumSizeHint() const
     int w;
     int h;
 
-    h = 2 + qMax(d->editSize.height(), priv->sliderSize.height());
+    h = qMax(d->editSize.height(), priv->sliderSize.height());
 
     // if in extra row, then count it here
     if (priv->label && (priv->labelAlignment & (Qt::AlignBottom | Qt::AlignTop))) {

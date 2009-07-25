@@ -21,6 +21,8 @@ kcolorbutton.cpp
 kcolorcombo.cpp
 kcolordialog.cpp	
 kcolordrag.cpp
+kcolorscheme.cpp        Matthew Woehlke <mw_triad@users.sourceforge.net>
+kcolorutils.cpp         Matthew Woehlke <mw_triad@users.sourceforge.net>
 kcombobox.cpp   	Dawit Alemayehu <adawit@kde.org>, Carsten Pfeiffer <pfeiffer@kde.org>
 kcommand.cpp		David Faure <faure@kde.org>
 kcompletionbox.cpp	Carsten Pfeiffer <pfeiffer@kde.org>
@@ -51,6 +53,7 @@ klistbox.cpp
 k3listview.cpp
 kmainwindow.cpp
 kmainwindowiface.cpp
+kmanagerselection.cpp   Lubos Lunak <l.lunak@kde.org>
 kmenu.cpp		Holger Freyther <freyther@kde.org>
 kmenubar.cpp
 kmessagebox.cpp		
@@ -74,6 +77,7 @@ kselect.cpp
 kseparator.cpp		
 kshortcutdialog.cpp	Ellis Whitehead <ellis@kde.org>
 ksqueezedtextlabel.cpp
+kstartupinfo.cpp        Lubos Lunak <l.lunak@kde.org>
 kstatusbar.cpp
 kstdaction.cpp
 kstdguiitem.cpp		Holger Freyther <freyther@kde.org>, Martijn Klingens <klingens@kde.org>
@@ -87,8 +91,14 @@ kurllabel.cpp
 kwindowlistmenu.cpp
 kassistantdialog.cpp
 kwallet.cpp		Michael Leupold <lemma@confuego.org>
+kwindowinfo_x11.cpp     Lubos Lunak <l.lunak@kde.org>
+kwindowsystem_x11.cpp   Lubos Lunak <l.lunak@kde.org>
 kwordwrap.cpp		David Faure <faure@kde.org>
+kxerrorhandler.cpp      Lubos Lunak <l.lunak@kde.org>
+kxmessages.cpp          Lubos Lunak <l.lunak@kde.org>
 kxmlguibuilder.cpp
 kxmlguiclient.cpp
 kxmlguifactory.cpp
+kxutils.cpp             Lubos Lunak <l.lunak@kde.org>
+netwm.cpp               Lubos Lunak <l.lunak@kde.org>
 qxembed.cpp

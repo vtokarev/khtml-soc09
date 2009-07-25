@@ -1,19 +1,20 @@
 /* 
-   Copyright (C) 2008-2009 by Michel Ludwig (michel.ludwig@kdemail.net)
-
-   This library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public
-   License version 2 as published by the Free Software Foundation.
-
-   This library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
-
-   You should have received a copy of the GNU Library General Public License
-   along with this library; see the file COPYING.LIB.  If not, write to
-   the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
-   Boston, MA 02110-1301, USA.
+ * Copyright (C) 2008-2009 by Michel Ludwig (michel.ludwig@kdemail.net)
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Library General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Library General Public License for more details.
+ *
+ * You should have received a copy of the GNU Library General Public License
+ * along with this library; see the file COPYING.LIB.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
 */
 
 /* If ever threads should be used again, thread communication and
@@ -24,6 +25,7 @@
 
 #include <QMutex>
 #include <QHash>
+#include <QtAlgorithms>
 #include <QTimer>
 #include <QThread>
 
@@ -35,40 +37,16 @@
 
 #include "katedocument.h"
 #include "katehighlight.h"
-#include "katetextline.h"
-#include "ontheflycheck.h"
 #include "spellcheck.h"
 
 KateSpellCheckManager::KateSpellCheckManager(QObject *parent)
 : QObject(parent), m_speller(NULL)
 {
-  m_onTheFlyChecker = new KateOnTheFlyChecker();
 }
 
 KateSpellCheckManager::~KateSpellCheckManager()
 {
-  delete m_onTheFlyChecker;
   delete m_speller;
-}
-
-void KateSpellCheckManager::updateOnTheFlySpellChecking(KateDocument *doc)
-{
-  m_onTheFlyChecker->updateDocument(doc);
-}
-
-void KateSpellCheckManager::reflectOnTheFlySpellCheckStatus(KateDocument *document, bool enabled)
-{
-  if(enabled) {
-    m_onTheFlyChecker->addDocument(document);
-  }
-  else {
-    m_onTheFlyChecker->removeDocument(document);
-  }
-}
-
-void KateSpellCheckManager::createActions(KActionCollection* ac)
-{
-  Q_UNUSED(ac);
 }
 
 Sonnet::Speller* KateSpellCheckManager::speller()
@@ -85,14 +63,68 @@ QString KateSpellCheckManager::defaultDictionary()
   return speller()->defaultLanguage();
 }
 
-QList<QPair<KTextEditor::Range, QString> > KateSpellCheckManager::spellCheckLanguageRanges(KateDocument *doc, const KTextEditor::Range& range)
+QList<KTextEditor::Range> KateSpellCheckManager::rangeDifference(const KTextEditor::Range& r1,
+                                                                 const KTextEditor::Range& r2)
 {
-  QString dictionary = doc->dictionary();
-  if(dictionary.isEmpty()) {
-    dictionary = defaultDictionary();
+  Q_ASSERT(r1.contains(r2));
+  QList<KTextEditor::Range> toReturn;
+  KTextEditor::Range before(r1.start(), r2.start());
+  KTextEditor::Range after(r2.end(), r1.end());
+  if(!before.isEmpty()) {
+    toReturn.push_back(before);
+  }
+  if(!after.isEmpty()) {
+    toReturn.push_back(after);
+  }
+  return toReturn;
+}
+
+namespace {
+  bool lessThanRangeDictionaryPair(const QPair<KTextEditor::Range, QString> &s1,
+                                          const QPair<KTextEditor::Range, QString> &s2)
+  {
+      return s1.first.end() <= s2.first.start();
+  }
+}
+
+QList<QPair<KTextEditor::Range, QString> > KateSpellCheckManager::spellCheckLanguageRanges(KateDocument *doc,
+                                                                                           const KTextEditor::Range& range)
+{
+  QString defaultDict = doc->defaultDictionary();
+  if(defaultDict.isEmpty()) {
+    defaultDict = defaultDictionary();
   }
   QList<RangeDictionaryPair> toReturn;
-  toReturn.push_back(RangeDictionaryPair(range, dictionary));
+  QMutexLocker smartLock(doc->smartMutex());
+  QList<QPair<KTextEditor::SmartRange*, QString> > dictionaryRanges = doc->dictionaryRanges();
+  if(dictionaryRanges.isEmpty()) {
+    toReturn.push_back(RangeDictionaryPair(range, defaultDict));
+    return toReturn;
+  }
+  QList<KTextEditor::Range> splitQueue;
+  splitQueue.push_back(range);
+  while(!splitQueue.isEmpty()) {
+    bool handled = false;
+    KTextEditor::Range consideredRange = splitQueue.takeFirst();
+    for(QList<QPair<KTextEditor::SmartRange*, QString> >::iterator i = dictionaryRanges.begin();
+        i != dictionaryRanges.end(); ++i) {
+      KTextEditor::Range languageRange = *((*i).first);
+      KTextEditor::Range intersection = languageRange.intersect(consideredRange);
+      if(intersection.isEmpty()) {
+        continue;
+      }
+      toReturn.push_back(RangeDictionaryPair(intersection, (*i).second));
+      splitQueue += rangeDifference(consideredRange, intersection);
+      handled = true;
+      break;
+    }
+    if(!handled) {
+      // 'consideredRange' did not intersect with any dictionary range, so we add it with the default dictionary
+      toReturn.push_back(RangeDictionaryPair(consideredRange, defaultDict));
+    }
+  }
+  // finally, we still have to sort the list
+  qStableSort(toReturn.begin(), toReturn.end(), lessThanRangeDictionaryPair);
   return toReturn;
 }
 
