@@ -265,7 +265,7 @@ Position Position::previousCharacterPosition() const
         }
         RenderPosition currentRPosition = RenderPosition::fromDOMPosition(pos);
         if (RenderPosition::rendersInDifferentPosition(originalRPosition, currentRPosition))
-            return pos;
+            return currentRPosition.position();
     }
     kDebug() << "no previous position" << endl;
     return *this;
@@ -289,7 +289,7 @@ Position Position::nextCharacterPosition() const
             return *this;
         RenderPosition currentRPosition = RenderPosition::fromDOMPosition(pos);
         if (RenderPosition::rendersInDifferentPosition(originalRPosition, currentRPosition))
-            return pos;
+            return currentRPosition.position();
     }
 
     return *this;
