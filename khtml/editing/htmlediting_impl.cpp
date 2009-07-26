@@ -1284,24 +1284,6 @@ void DeleteSelectionCommandImpl::doApply()
     }
 
     setEndingSelection(upstreamStart);
-
-    /* if (upstreamStart.node() != downstreamStart.node()) {
-    } else {
-    }*/
-
-    /* if (upstreamEnd.node() != downstreamEnd.node()) {
-    } else {
-        NodeImpl *node = upstreamEnd.node();
-        int offset = upstreamEnd.offset();
-        if (!offset) {
-            // end is not selected
-        } else {
-            if (node->isTextNode()) {
-                deleteText(static_cast<TextImpl*>(node), 0, offset);
-            }
-        }
-    } */
-
 #if 0
     Position endingPosition;
     bool adjustEndingPositionDownstream = false;
