@@ -238,10 +238,10 @@ static bool execForeColor(KHTMLPart *part, bool /*userInterface*/, const DOMStri
     return execStyleChange(part, CSS_PROP_COLOR, value);
 }
 
-static bool execIndent(KHTMLPart * /*part*/, bool /*userInterface*/, const DOMString &/*value*/)
+static bool execIndent(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*value*/)
 {
-    // FIXME: Implement.
-    return false;
+    part->editor()->indent();
+    return true;
 }
 
 static bool execInsertNewline(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*value*/)
@@ -300,10 +300,10 @@ static bool execJustifyRight(KHTMLPart *part, bool /*userInterface*/, const DOMS
     return execStyleChange(part, CSS_PROP_TEXT_ALIGN, "right");
 }
 
-static bool execOutdent(KHTMLPart * /*part*/, bool /*userInterface*/, const DOMString &/*value*/)
+static bool execOutdent(KHTMLPart *part, bool /*userInterface*/, const DOMString &/*value*/)
 {
-    // FIXME: Implement.
-    return false;
+    part->editor()->outdent();
+    return true;
 }
 
 #ifndef NO_SUPPORT_PASTE

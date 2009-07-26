@@ -179,6 +179,12 @@ public:
 
   void closeTyping();
 
+  /**
+   * indent/outdent current selection
+   */
+  void indent();
+  void outdent();
+
 private:
   /** Handles key events. Returns true if event has been handled. */
   bool handleKeyEvent(QKeyEvent *);

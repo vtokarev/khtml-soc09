@@ -639,6 +639,28 @@ private:
 
 //------------------------------------------------------------------------------------------
 
+//------------------------------------------------------------------------------------------
+// IndentOutdentCommandImpl
+
+class IndentOutdentCommandImpl : public CompositeEditCommandImpl
+{
+public:
+    enum Type { Indent, Outdent };
+
+    IndentOutdentCommandImpl(DocumentImpl *document, Type type);
+    virtual ~IndentOutdentCommandImpl();
+
+    virtual void doApply();
+
+private:
+    void indent();
+    void outdent();
+
+    Type m_commandType;
+};
+
+//------------------------------------------------------------------------------------------
+
 } // end namespace khtml
 
 #endif

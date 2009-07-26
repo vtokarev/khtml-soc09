@@ -58,6 +58,7 @@ using khtml::EditCommandImpl;
 using khtml::ApplyStyleCommandImpl;
 using khtml::TypingCommandImpl;
 using khtml::EditorContext;
+using khtml::IndentOutdentCommandImpl;
 
 // --------------------------------------------------------------------------
 
@@ -480,6 +481,20 @@ void Editor::closeTyping()
     EditCommandImpl *lastCommand = lastEditCommand().get();
     if (lastCommand && lastCommand->isTypingCommand())
         static_cast<TypingCommandImpl*>(lastCommand)->closeTyping();
+}
+
+void Editor::indent()
+{
+    RefPtr<IndentOutdentCommandImpl> command = new IndentOutdentCommandImpl(m_part->xmlDocImpl(), 
+            IndentOutdentCommandImpl::Indent);
+    command->apply();
+}
+
+void Editor::outdent()
+{
+    RefPtr<IndentOutdentCommandImpl> command = new IndentOutdentCommandImpl(m_part->xmlDocImpl(), 
+            IndentOutdentCommandImpl::Outdent);
+    command->apply();
 }
 
 bool Editor::handleKeyEvent(QKeyEvent *_ke)

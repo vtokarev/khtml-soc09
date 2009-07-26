@@ -2684,4 +2684,62 @@ void InsertListCommandImpl::insertList(DocumentImpl *document, Type type)
 
 //------------------------------------------------------------------------------------------
 
+//------------------------------------------------------------------------------------------
+// IndentOutdentCommandImpl
+
+IndentOutdentCommandImpl::IndentOutdentCommandImpl(DocumentImpl *document, Type type)
+    : CompositeEditCommandImpl(document), m_commandType(type)
+{
+}
+
+IndentOutdentCommandImpl::~IndentOutdentCommandImpl()
+{
+}
+
+void IndentOutdentCommandImpl::indent()
+{
+    Selection selection = endingSelection();
+    kDebug() << "[indent selection]" << selection << endl;
+    NodeImpl *startBlock = selection.start().node()->enclosingBlockFlowElement();
+    NodeImpl *endBlock = selection.end().node()->enclosingBlockFlowElement();
+
+    if (startBlock == endBlock) {
+        // check if selection is the list, but not fully covered
+        if (startBlock->id() == ID_LI && (startBlock->previousSibling() || startBlock->nextSibling())) {
+            kDebug() << "[modify list]" << endl;
+        } else {
+            NodeImpl *blockquoteElement = document()->createHTMLElement("blockquote");
+            if (startBlock->id() == ID_LI) {
+                startBlock = startBlock->parent();
+                NodeImpl *parent = startBlock->parent();
+                removeNode(startBlock);
+                appendNode(parent, blockquoteElement);
+                appendNode(blockquoteElement, startBlock);
+            } else {
+                NodeImpl *parent = startBlock->parent();
+                removeNode(startBlock);
+                appendNode(parent, blockquoteElement);
+                appendNode(blockquoteElement, startBlock);
+            }
+        }
+    } else {
+        kDebug() << "[different blocks are not supported yet]" << endl;
+    }
+}
+
+void IndentOutdentCommandImpl::outdent()
+{
+}
+
+void IndentOutdentCommandImpl::doApply()
+{
+    if (m_commandType == Indent)
+        indent();
+    else
+        outdent();
+}
+
+//------------------------------------------------------------------------------------------
+
 } // namespace khtml
+
