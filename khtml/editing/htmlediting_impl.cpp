@@ -1887,6 +1887,11 @@ void InputTextCommandImpl::insertSpace(TextImpl *textNode, unsigned long offset)
         return;
     }
 
+    if (!Position(textNode, offset).isLastRenderedPositionOnLine()) {
+        insertText(textNode, offset, " ");
+        return;
+    }
+
     // insert an nbsp
     insertText(textNode, offset, nonBreakingSpaceString());
 }
