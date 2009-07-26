@@ -54,6 +54,7 @@ namespace DOM {
 }
 
 using DOM::DocumentImpl;
+using DOM::NodeImpl;
 
 namespace khtml
 {
@@ -272,6 +273,9 @@ public:
 	virtual void doApply();
     
 private:
+    void deleteContentBeforeOffset(NodeImpl *node, int offset);
+    void deleteContentAfterOffset(NodeImpl *node, int offset);
+    void deleteContentInsideNode(NodeImpl *node, int startOffset, int endOffset);
     void deleteDownstreamWS(const DOM::Position &start);
     bool containsOnlyWhitespace(const DOM::Position &start, const DOM::Position &end);
     void joinTextNodesWithSameStyle();

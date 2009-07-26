@@ -1203,6 +1203,36 @@ bool DeleteSelectionCommandImpl::containsOnlyWhitespace(const Position &start, c
     return true;
 }
 
+void DeleteSelectionCommandImpl::deleteContentInsideNode(NodeImpl *node, int startOffset, int endOffset)
+{
+    kDebug() << "[Delete content inside node]" << node << startOffset << endOffset << endl;
+    if (node->isTextNode()) {
+        // check if nothing to delete
+        if (startOffset == endOffset)
+            return;
+        // check if node is fully covered then remove node completely
+        if (!startOffset && endOffset == node->maxOffset()) {
+            removeNodeAndPrune(node);
+            return;
+        }
+        // delete only substring
+        deleteText(static_cast<TextImpl*>(node), startOffset, endOffset - startOffset);
+        return;
+    }
+    kDebug() << "[non-text node] not supported" << endl;
+}
+
+void DeleteSelectionCommandImpl::deleteContentBeforeOffset(NodeImpl *node, int offset)
+{
+    deleteContentInsideNode(node, 0, offset);
+}
+
+void DeleteSelectionCommandImpl::deleteContentAfterOffset(NodeImpl *node, int offset)
+{
+    if (node->isTextNode())
+        deleteContentInsideNode(node, offset, node->maxOffset());
+}
+
 void DeleteSelectionCommandImpl::doApply()
 {
     // If selection has not been set to a custom selection when the command was created,
@@ -1256,31 +1286,11 @@ void DeleteSelectionCommandImpl::doApply()
         }
     }
 
-    if (upstreamStart.node() == downstreamEnd.node()) {
-        NodeImpl *node = upstreamEnd.node();
-        int startOffset = upstreamStart.offset();
-        int endOffset = downstreamEnd.offset();
-        kDebug() << "[Delete content inside node]" << node << startOffset << endOffset << endl;
-        if (node->isTextNode() && startOffset != endOffset) {
-            deleteText(static_cast<TextImpl*>(node), startOffset, endOffset - startOffset);
-        }
-    } else {
-        NodeImpl *node = upstreamStart.node();
-        if (node->isTextNode()) {
-            int startOffset = upstreamStart.offset();
-            int endOffset = static_cast<TextImpl*>(node)->length();
-            kDebug() << "[Delete content inside node]" << node << startOffset << endOffset << endl;
-            if (startOffset != endOffset)
-                deleteText(static_cast<TextImpl*>(node), startOffset, endOffset - startOffset);
-        }
-        node = downstreamEnd.node();
-        if (node->isTextNode()) {
-            int startOffset = 0;
-            int endOffset = downstreamEnd.offset();
-            kDebug() << "[Delete content inside node]" << node << startOffset << endOffset << endl;
-            if (startOffset != endOffset)
-                deleteText(static_cast<TextImpl*>(node), startOffset, endOffset - startOffset);
-        }
+    if (upstreamStart.node() == downstreamEnd.node())
+        deleteContentInsideNode(upstreamEnd.node(), upstreamStart.offset(), downstreamEnd.offset());
+    else {
+        deleteContentAfterOffset(upstreamStart.node(), upstreamStart.offset());
+        deleteContentBeforeOffset(downstreamEnd.node(), downstreamEnd.offset());
     }
 
     setEndingSelection(upstreamStart);
