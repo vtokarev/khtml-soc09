@@ -1166,8 +1166,7 @@ void DeleteSelectionCommandImpl::joinTextNodesWithSameStyle()
                 kDebug(6200) << "joinTextNodesWithSameStyle [1]";
             }
         }
-    }
-    else if (pos.offset() == (long)textNode->length()) {
+    } else if (pos.offset() == (long)textNode->length()) {
         PositionIterator it(pos);
         Position next = it.next();
         if (next == pos)
@@ -1280,14 +1279,12 @@ void DeleteSelectionCommandImpl::doApply()
         kDebug(6200) << "ending position case 1";
         endingPosition = Position(startBlock, 0);
         adjustEndingPositionDownstream = true;
-    }
-    else if (!startCompletelySelected) {
+    } else if (!startCompletelySelected) {
         kDebug(6200) << "ending position case 2";
-        endingPosition = upstreamStart;
+        endingPosition = upstreamEnd; // FIXME ??????????? upstreamStart;
         if (upstreamStart.node()->id() == ID_BR && upstreamStart.offset() == 1)
             adjustEndingPositionDownstream = true;
-    }
-    else if (upstreamStart != downstreamStart) {
+    } else if (upstreamStart != downstreamStart) {
         kDebug(6200) << "ending position case 3";
         endingPosition = upstreamStart;
         if (upstreamStart.node()->id() == ID_BR && upstreamStart.offset() == 1)
@@ -1308,8 +1305,7 @@ void DeleteSelectionCommandImpl::doApply()
             TextImpl *textNode = static_cast<TextImpl *>(trailing.node());
             replaceText(textNode, trailing.offset(), 1, nonBreakingSpaceString());
         }
-    }
-    else if (!startAtStartOfBlock && endAtEndOfBlock) {
+    } else if (!startAtStartOfBlock && endAtEndOfBlock) {
         // convert leading whitespace
         Position leading = leadingWhitespacePosition(upstreamStart.equivalentUpstreamPosition());
         if (leading.notEmpty()) {
@@ -1317,8 +1313,7 @@ void DeleteSelectionCommandImpl::doApply()
             TextImpl *textNode = static_cast<TextImpl *>(leading.node());
             replaceText(textNode, leading.offset(), 1, nonBreakingSpaceString());
         }
-    }
-    else if (!startAtStartOfBlock && !endAtEndOfBlock) {
+    } else if (!startAtStartOfBlock && !endAtEndOfBlock) {
         // convert contiguous whitespace
         Position leading = leadingWhitespacePosition(upstreamStart.equivalentUpstreamPosition());
         Position trailing = trailingWhitespacePosition(downstreamEnd.equivalentDownstreamPosition());
@@ -1339,8 +1334,7 @@ void DeleteSelectionCommandImpl::doApply()
     if (startCompletelySelected) {
         kDebug(6200) << "start node delete case 1";
         removeNodeAndPrune(downstreamStart.node(), startBlock);
-    }
-    else if (onlyWhitespace) {
+    } else if (onlyWhitespace) {
         // Selection only contains whitespace. This is really a special-case to
         // handle significant whitespace that is collapsed at the end of a line,
         // but also handles deleting a space in mid-line.
@@ -1352,17 +1346,15 @@ void DeleteSelectionCommandImpl::doApply()
         int length = text->length();
         if (length == upstreamStart.offset())
             offset--;
-        deleteText(text, offset, 1);
-    }
-    else if (downstreamStart.node()->isTextNode()) {
+        // FIXME ??? deleteText(text, offset, 1);
+    } else if (downstreamStart.node()->isTextNode()) {
         kDebug(6200) << "start node delete case 3";
         TextImpl *text = static_cast<TextImpl *>(downstreamStart.node());
         int endOffset = text == upstreamEnd.node() ? upstreamEnd.offset() : text->length();
         if (endOffset > downstreamStart.offset()) {
             deleteText(text, downstreamStart.offset(), endOffset - downstreamStart.offset());
         }
-    }
-    else {
+    } else {
         // we have clipped the end of a non-text element
         // the offset must be 1 here. if it is, do nothing and move on.
         kDebug(6200) << "start node delete case 4";
@@ -1674,25 +1666,20 @@ Position InputTextCommandImpl::prepareForTextInsertion(bool adjustDownstream)
         if (pos.node()->isEditableBlock()) {
             kDebug(6200) << "prepareForTextInsertion case 1";
             appendNode(pos.node(), nodeToInsert);
-        }
-        else if (pos.node()->id() == ID_BR && pos.offset() == 1) {
+        } else if (pos.node()->id() == ID_BR && pos.offset() == 1) {
             kDebug(6200) << "prepareForTextInsertion case 2";
             insertNodeAfter(nodeToInsert, pos.node());
-        }
-        else if (pos.node()->caretMinOffset() == pos.offset()) {
+        } else if (pos.node()->caretMinOffset() == pos.offset()) {
             kDebug(6200) << "prepareForTextInsertion case 3";
             insertNodeBefore(nodeToInsert, pos.node());
-        }
-        else if (pos.node()->caretMaxOffset() == pos.offset()) {
+        } else if (pos.node()->caretMaxOffset() == pos.offset()) {
             kDebug(6200) << "prepareForTextInsertion case 4";
             insertNodeAfter(nodeToInsert, pos.node());
-        }
-        else
+        } else
             assert(false);
 
         pos = Position(textNode, 0);
-    }
-    else {
+    } else {
         // Handle the case where there is a typing style.
         if (document()->part()->editor()->typingStyle()) {
             if (pos.node()->isTextNode() && pos.offset() > pos.node()->caretMinOffset() && pos.offset() < pos.node()->caretMaxOffset()) {
