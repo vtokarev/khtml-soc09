@@ -1008,16 +1008,18 @@ static bool shouldDeleteUpstreamPosition(const Position &pos)
     if (pos.isFirstRenderedPositionOnLine() || pos.isLastRenderedPositionOnLine())
         return false;
 
-    RenderText *textRenderer = static_cast<RenderText *>(renderer);
-    for (InlineTextBox *box = textRenderer->firstTextBox(); box; box = box->nextTextBox()) {
-        if (pos.offset() < box->m_start) {
-            return true;
-        }
-        if (pos.offset() >= box->m_start && pos.offset() < box->m_start + box->m_len)
-            return false;
-    }
-
-    return true;
+    return false;
+    // TODO we need to match DOM - Rendered offset first
+//    RenderText *textRenderer = static_cast<RenderText *>(renderer);
+//    for (InlineTextBox *box = textRenderer->firstTextBox(); box; box = box->nextTextBox()) {
+//        if (pos.offset() < box->m_start) {
+//            return true;
+//        }
+//        if (pos.offset() >= box->m_start && pos.offset() < box->m_start + box->m_len)
+//            return false;
+//    }
+//
+//    return true;
 }
 
 Position DeleteCollapsibleWhitespaceCommandImpl::deleteWhitespace(const Position &pos)
