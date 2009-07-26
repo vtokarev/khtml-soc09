@@ -1053,25 +1053,27 @@ Position DeleteCollapsibleWhitespaceCommandImpl::deleteWhitespace(const Position
     Position endingPosition = upstream;
 
     while (it.current() != downstream) {
-
         Position next = it.peekNext();
+        kDebug() << "[iterate and delete]" << next << endl;
         if (next.node() != deleteStart.node()) {
-            assert(deleteStart.node()->isTextNode());
-            TextImpl *textNode = static_cast<TextImpl *>(deleteStart.node());
-            unsigned long count = it.current().offset() - deleteStart.offset();
-            if (count == textNode->length()) {
-                kDebug(6200) << "   removeNodeAndPrune 1:" << textNode;
-                if (textNode == endingPosition.node())
-                    endingPosition = Position(next.node(), next.node()->caretMinOffset());
-                removeNodeAndPrune(textNode);
-            }
-            else {
-                kDebug(6200) << "   deleteText 1:" <<  textNode << "t len:" << textNode->length()<<"start:" <<  deleteStart.offset() << "del len:" << (it.current().offset() - deleteStart.offset());
-                deleteText(textNode, deleteStart.offset(), count);
+            // TODO assert(deleteStart.node()->isTextNode());
+            if (deleteStart.node()->isTextNode()) {
+                TextImpl *textNode = static_cast<TextImpl *>(deleteStart.node());
+                unsigned long count = it.current().offset() - deleteStart.offset();
+                if (count == textNode->length()) {
+                    kDebug(6200) << "   removeNodeAndPrune 1:" << textNode;
+                    if (textNode == endingPosition.node())
+                        endingPosition = Position(next.node(), next.node()->caretMinOffset());
+                    removeNodeAndPrune(textNode);
+                } else {
+                    kDebug(6200) << "   deleteText 1:" <<  textNode << "t len:" << textNode->length()<<"start:" <<  deleteStart.offset() << "del len:" << (it.current().offset() - deleteStart.offset());
+                    deleteText(textNode, deleteStart.offset(), count);
+                }
+            } else {
+                kDebug() << "[not text node is not supported yet]" << endl;
             }
             deleteStart = next;
-        }
-        else if (next == downstream) {
+        } else if (next == downstream) {
             assert(deleteStart.node() == downstream.node());
             assert(downstream.node()->isTextNode());
             TextImpl *textNode = static_cast<TextImpl *>(deleteStart.node());
@@ -1080,8 +1082,7 @@ Position DeleteCollapsibleWhitespaceCommandImpl::deleteWhitespace(const Position
             if (count == textNode->length()) {
                 kDebug(6200) << "   removeNodeAndPrune 2:"<<textNode;
                 removeNodeAndPrune(textNode);
-            }
-            else {
+            } else {
                 kDebug(6200) << "   deleteText 2:"<< textNode<< "t len:" <<  textNode->length() <<"start:" <<deleteStart.offset() << "del len:" <<  count;
                 deleteText(textNode, deleteStart.offset(), count);
                 m_charactersDeleted = count;
