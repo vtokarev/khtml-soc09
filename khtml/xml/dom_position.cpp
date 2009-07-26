@@ -388,8 +388,12 @@ Position Position::equivalentUpstreamPosition() const
         }
 
         if (renderer->isText() && static_cast<RenderText *>(renderer)->firstTextBox()) {
-            if (it.current().node() != node())
-                return Position(it.current().node(), renderer->caretMaxOffset());
+            if (it.current().node() != node()) {
+                Position result(it.current().node(), renderer->caretMaxOffset());
+                if (rendersInDifferentPosition(result))
+                    return it.next();
+                return result;
+            }
 
             if (it.current().offset() < 0)
                 continue;
@@ -440,8 +444,12 @@ Position Position::equivalentDownstreamPosition() const
         }
 
         if (renderer->isText() && static_cast<RenderText *>(renderer)->firstTextBox()) {
-            if (it.current().node() != node())
-                return Position(it.current().node(), renderer->caretMinOffset());
+            if (it.current().node() != node()) {
+                Position result(it.current().node(), renderer->caretMinOffset());
+                if (rendersInDifferentPosition(result))
+                    return it.previous();
+                return result;
+            }
 
             if (it.current().offset() < 0)
                 continue;
