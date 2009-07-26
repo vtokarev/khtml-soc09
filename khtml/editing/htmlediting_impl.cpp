@@ -2482,8 +2482,7 @@ void TypingCommandImpl::insertText(const DOMString &text)
         RefPtr<InputTextCommandImpl> cmd = new InputTextCommandImpl(document());
         applyCommandToComposite(cmd);
         cmd->input(text);
-    }
-    else {
+    } else {
         EditCommandImpl *lastCommand = m_cmds.last().get();
         if (lastCommand->isInputTextCommand()) {
             static_cast<InputTextCommandImpl*>(lastCommand)->input(text);
