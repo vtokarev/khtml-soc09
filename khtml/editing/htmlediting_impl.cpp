@@ -2733,6 +2733,30 @@ void IndentOutdentCommandImpl::indent()
 
 void IndentOutdentCommandImpl::outdent()
 {
+    Selection selection = endingSelection();
+    kDebug() << "[indent selection]" << selection << endl;
+    NodeImpl *startBlock = selection.start().node()->enclosingBlockFlowElement();
+    NodeImpl *endBlock = selection.end().node()->enclosingBlockFlowElement();
+
+    if (startBlock == endBlock) {
+        if (startBlock->id() == ID_LI) {
+            bool singleItemList = !startBlock->nextSibling() && !startBlock->previousSibling();
+            NodeImpl *listNode = startBlock->parent();
+            bool hasParentList = listNode->parent()->id() == ID_OL || listNode->parent()->id() == ID_UL;
+            if (hasParentList) {
+                removeNode(startBlock);
+                appendNode(listNode->parent(), startBlock);
+            } else {
+                // split the list into 2?
+            }
+            if (singleItemList)
+                removeNode(listNode);
+        } else {
+            kDebug() << "[not the list]" << endl;
+        }
+    } else {
+        kDebug() << "[different blocks are not supported yet]" << endl;
+    }
 }
 
 void IndentOutdentCommandImpl::doApply()
