@@ -573,6 +573,7 @@ KateEditGeneralConfigTab::KateEditGeneralConfigTab(QWidget *parent)
   connect(ui->sbWordWrap, SIGNAL(valueChanged(int)), this, SLOT(slotChanged()));
   connect( ui->chkRemoveTrailingSpaces, SIGNAL(toggled(bool)), this, SLOT(slotChanged()) );
   connect(ui->chkAutoBrackets, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
+  connect(ui->chkSmartCopyCut, SIGNAL(toggled(bool)), this, SLOT(slotChanged()));
 
   // "What's this?" help is in the ui-file
 
@@ -618,6 +619,7 @@ void KateEditGeneralConfigTab::apply ()
   KateRendererConfig::global()->setWordWrapMarker (ui->chkShowStaticWordWrapMarker->isChecked());
 
   KateDocumentConfig::global()->configEnd ();
+  KateViewConfig::global()->setSmartCopyCut(ui->chkSmartCopyCut->isChecked());
   KateViewConfig::global()->configEnd ();
 }
 
@@ -636,6 +638,7 @@ void KateEditGeneralConfigTab::reload ()
   ui->sbWordWrap->setValue( KateDocumentConfig::global()->wordWrapAt() );
   ui->chkRemoveTrailingSpaces->setChecked( configFlags & KateDocumentConfig::cfRemoveTrailingDyn );
   ui->chkAutoBrackets->setChecked( configFlags & KateDocumentConfig::cfAutoBrackets );
+  ui->chkSmartCopyCut->setChecked( KateViewConfig::global()->smartCopyCut() );
 }
 //END KateEditGeneralConfigTab
 
@@ -1359,7 +1362,7 @@ void KateDictionaryBar::updateData()
   KateDocument *document = view()->doc();
   QString dictionary = document->defaultDictionary();
   if(dictionary.isEmpty()) {
-    dictionary = KateGlobal::self()->spellCheckManager()->defaultDictionary();
+    dictionary = Sonnet::Speller().defaultLanguage();
   }
   m_dictionaryComboBox->setCurrentByDictionary(dictionary);
 }
@@ -1372,7 +1375,7 @@ void KateDictionaryBar::dictionaryChanged(const QString& dictionary)
   }
 
   KTextEditor::Range selection = kateView->selectionRange();
-  if(selection.isValid()) {
+  if(selection.isValid() && !selection.isEmpty()) {
     kateView->doc()->setDictionary(dictionary, selection);
   }
   else {

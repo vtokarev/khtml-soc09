@@ -1,4 +1,4 @@
-/** @mainpage kdeui_next
+/** @mainpage Itemviews
 
 <h2> Models and Views</h2>
 
@@ -75,4 +75,7 @@ The KSelectionProxyModel orders its items in the same top-to-bottom order as the
 \image html selectionproxymodel-ordered.png "Ordered items in the SelectionProxyModel"
 
 */
+
+// DOXYGEN_REFERENCES = kdecore kdeui
+// DOXYGEN_SET_PROJECT_NAME = Itemviews
 

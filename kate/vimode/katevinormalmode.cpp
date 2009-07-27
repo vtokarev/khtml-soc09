@@ -61,9 +61,7 @@ KateViNormalMode::~KateViNormalMode()
 {
   delete m_marks;
   qDeleteAll( m_commands );
-  m_commands.clear();
   qDeleteAll( m_motions) ;
-  m_motions.clear();
 }
 
 void KateViNormalMode::mappingTimerTimeOut()
@@ -1764,7 +1762,7 @@ KateViRange KateViNormalMode::motionToMark()
     r.endLine = cursor->line();
     r.endColumn = cursor->column();
   } else {
-    error(QString("Mark not set: ") + m_keys.right( 1 ) );
+    error(i18n("Mark not set: %1",m_keys.right( 1 ) ));
     r.valid = false;
   }
 

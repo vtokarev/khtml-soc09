@@ -30,6 +30,7 @@
 
 class KMenu;
 class KCalendarSystem;
+class KColorScheme;
 
 /**
  * Frame with popup menu behavior.
@@ -127,6 +128,8 @@ private:
  *
  * When a date is selected by the user, it emits a signal:
  * dateSelected(QDate)
+ *
+ * \image html kdatetable.png "KDE Date Selection Table"
  *
  * @internal
  * @author Tim Gilman, Mirko Boehm
@@ -254,6 +257,11 @@ protected:
     virtual void focusInEvent( QFocusEvent *e );
     virtual void focusOutEvent( QFocusEvent *e );
 
+    /**
+     * Cell highlight on mouse hovering
+     */
+    virtual bool event(QEvent *e);
+
 Q_SIGNALS:
     /**
      * The selected date changed.
@@ -294,7 +302,7 @@ private:
     KDateTablePrivate * const d;
 
     void initAccels();
-    void paintCell( QPainter *painter, int row, int col );
+    void paintCell( QPainter *painter, int row, int col, const KColorScheme &colorScheme );
 
     Q_DISABLE_COPY( KDateTable )
 };

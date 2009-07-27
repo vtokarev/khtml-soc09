@@ -26,6 +26,7 @@
 #include <QClipboard>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QPainter>
 #include <QScrollBar>
 #include <QTextCursor>
 #include <QDBusInterface>
@@ -62,6 +63,18 @@ class KTextEdit::Private
         findReplaceEnabled(true),
         highlighter( 0 ), findDlg(0),find(0),repDlg(0),replace(0), findIndex(0), repIndex(0)
     {
+        //Check the default sonnet settings to see if spellchecking should be enabled.
+        sonnetKConfig = new KConfig("sonnetrc");
+        KConfigGroup group(sonnetKConfig, "Spelling");
+        checkSpellingEnabled = group.readEntry("checkerEnabledByDefault", false);
+
+        // i18n: Placeholder text in text edit widgets is the text appearing
+        // before any user input, briefly explaining to the user what to type
+        // (e.g. "Enter message").
+        // By default the text is set in italic, which may not be appropriate
+        // for some languages and scripts (e.g. for CJK ideographs).
+        QString metaMsg = i18nc("Italic placeholder text in line edits: 0 no, 1 yes", "1");
+        italicizePlaceholder = (metaMsg.trimmed() != QString('0'));
     }
 
     ~Private()
@@ -71,6 +84,7 @@ class KTextEdit::Private
       delete find;
       delete replace;
       delete repDlg;
+      delete sonnetKConfig;
     }
 
     /**
@@ -103,6 +117,8 @@ class KTextEdit::Private
     void slotAllowTab();
     void menuActivated( QAction* action );
 
+    void updateClickMessageRect();
+
     void init();
 
     KTextEdit *parent;
@@ -110,6 +126,8 @@ class KTextEdit::Private
     QAction *autoSpellCheckAction;
     QAction *allowTab;
     QAction *spellCheckAction;
+    QString clickMessage;
+    bool italicizePlaceholder : 1;
     bool customPalette : 1;
 
     bool checkSpellingEnabled : 1;
@@ -124,6 +142,7 @@ class KTextEdit::Private
     KReplaceDialog *repDlg;
     KReplace *replace;
     int findIndex, repIndex;
+    KConfig *sonnetKConfig;
 };
 
 void KTextEdit::Private::spellCheckerCanceled()
@@ -222,6 +241,14 @@ void KTextEdit::Private::slotReplaceText(const QString &text, int replacementInd
     if (replace->options() & KReplaceDialog::PromptOnReplace) {
         parent->ensureCursorVisible();
     }
+}
+
+void KTextEdit::Private::updateClickMessageRect()
+{
+    int margin = int(parent->document()->documentMargin());
+    QRect rect = parent->viewport()->rect().adjusted(margin, margin, -margin, -margin);
+    rect = parent->fontMetrics().boundingRect(rect, Qt::AlignTop | Qt::TextWordWrap, clickMessage);
+    parent->viewport()->update(rect);
 }
 
 void KTextEdit::Private::init()
@@ -706,6 +733,9 @@ void KTextEdit::focusInEvent( QFocusEvent *event )
   if ( d->checkSpellingEnabled && !isReadOnly() && !d->highlighter )
     createHighlighter();
 
+  if (!d->clickMessage.isEmpty()) {
+      d->updateClickMessageRect();
+  }
   QTextEdit::focusInEvent( event );
 }
 
@@ -1042,6 +1072,54 @@ void KTextEdit::keyPressEvent( QKeyEvent *event )
     } else {
         QTextEdit::keyPressEvent(event);
     }
+}
+
+void KTextEdit::setClickMessage(const QString &msg)
+{
+    if (msg != d->clickMessage) {
+        if (!d->clickMessage.isEmpty()) {
+            d->updateClickMessageRect();
+        }
+        d->clickMessage = msg;
+        if (!d->clickMessage.isEmpty()) {
+            d->updateClickMessageRect();
+        }
+    }
+}
+
+QString KTextEdit::clickMessage() const
+{
+    return d->clickMessage;
+}
+
+void KTextEdit::paintEvent(QPaintEvent *ev)
+{
+    QTextEdit::paintEvent(ev);
+
+    if (!d->clickMessage.isEmpty() && !hasFocus() && document()->isEmpty()) {
+        QPainter p(viewport());
+
+        QFont f = font();
+        f.setItalic(d->italicizePlaceholder);
+        p.setFont(f);
+
+        QColor color(palette().color(foregroundRole()));
+        color.setAlphaF(0.5);
+        p.setPen(color);
+
+        int margin = int(document()->documentMargin());
+        QRect cr = viewport()->rect().adjusted(margin, margin, -margin, -margin);
+
+        p.drawText(cr, Qt::AlignTop | Qt::TextWordWrap, d->clickMessage);
+    }
+}
+
+void KTextEdit::focusOutEvent(QFocusEvent *ev)
+{
+    if (!d->clickMessage.isEmpty()) {
+        d->updateClickMessageRect();
+    }
+    QTextEdit::focusOutEvent(ev);
 }
 
 #include "ktextedit.moc"

@@ -21,6 +21,7 @@
 
 #include <QAction>
 #include <QHash>
+#include <QMenu>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QTimer>

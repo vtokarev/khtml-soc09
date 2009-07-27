@@ -1214,7 +1214,9 @@ DOM::DOMString CSSPrimitiveValueImpl::cssText() const
 	    text = getValueName(m_value.ident);
 	    break;
 	case CSSPrimitiveValue::CSS_ATTR:
-	    // ###
+            text = "attr(";
+            text += DOMString( m_value.string );
+            text += ")";
 	    break;
 	case CSSPrimitiveValue::CSS_COUNTER:
             text = "counter(";
