@@ -2707,6 +2707,10 @@ void IndentOutdentCommandImpl::indent()
         // check if selection is the list, but not fully covered
         if (startBlock->id() == ID_LI && (startBlock->previousSibling() || startBlock->nextSibling())) {
             kDebug() << "[modify list]" << endl;
+            RefPtr<NodeImpl> newList = startBlock->parent()->cloneNode(false);
+            insertNodeAfter(newList.get(), startBlock);
+            removeNode(startBlock);
+            appendNode(newList.get(), startBlock);
         } else {
             NodeImpl *blockquoteElement = document()->createHTMLElement("blockquote");
             if (startBlock->id() == ID_LI) {
