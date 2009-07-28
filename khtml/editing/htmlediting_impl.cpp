@@ -2746,14 +2746,16 @@ void IndentOutdentCommandImpl::outdent()
             bool hasParentList = listNode->parent()->id() == ID_OL || listNode->parent()->id() == ID_UL;
             if (hasParentList) {
                 removeNode(startBlock);
-                appendNode(listNode->parent(), startBlock);
+                insertNodeAfter(startBlock, listNode);
             } else {
                 // split the list into 2?
             }
             if (singleItemList)
                 removeNode(listNode);
+        } else if (startBlock->id() == ID_BLOCKQUOTE) {
+            removeNodePreservingChildren(startBlock);
         } else {
-            kDebug() << "[not the list]" << endl;
+            kDebug() << "[not the list or blockquote]" << endl;
         }
     } else {
         kDebug() << "[different blocks are not supported yet]" << endl;
