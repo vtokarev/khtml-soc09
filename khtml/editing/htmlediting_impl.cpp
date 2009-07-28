@@ -759,7 +759,8 @@ void ApplyStyleCommandImpl::removeCSSStyle(HTMLElementImpl *elem)
         // If it is, and there are no more attributes on the span other than our
         // class marker, remove the span.
         NamedAttrMapImpl *map = elem->attributes();
-        if (map && map->length() == 1 && elem->getAttribute(ATTR_CLASS) == styleSpanClassString())
+        if (map && (map->length() == 1 || (map->length() == 2 && elem->getAttribute(ATTR_STYLE).isEmpty())) &&
+                elem->getAttribute(ATTR_CLASS) == styleSpanClassString())
             removeNodePreservingChildren(elem);
     }
 }
