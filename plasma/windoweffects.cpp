@@ -21,6 +21,7 @@
 
 #include <QVarLengthArray>
 
+#include <kwindowsystem.h>
 
 namespace Plasma
 {
@@ -28,42 +29,26 @@ namespace Plasma
 namespace WindowEffects
 {
 
-void setSlidingWindow(WId id, Plasma::Location location)
+void slideWindow(WId id, Plasma::Location location, int offset)
 {
 #ifdef Q_WS_X11
     Display *dpy = QX11Info::display();
-    //set again the atom, the location could have changed
-    QDesktopWidget *desktop = QApplication::desktop();
-
-    Window dummy;
-    int x;
-    int y;
-    uint width;
-    uint height;
-    uint bw;
-    uint d;
-    XGetGeometry(dpy, id, &dummy, &x, &y, &width, &height, &bw, &d);
-
-    QRect avail = desktop->availableGeometry(QPoint(x, y));//desktop->screenNumber(pos()));
-
     Atom atom = XInternAtom( dpy, "_KDE_SLIDE", False );
     QVarLengthArray<long, 1024> data(2);
 
+    data[0] = offset;
+
     switch (location) {
     case LeftEdge:
-        data[0] = avail.left();
         data[1] = 0;
         break;
     case TopEdge:
-        data[0] = avail.top();
         data[1] = 1;
         break;
     case RightEdge:
-        data[0] = avail.right();
         data[1] = 2;
         break;
     case BottomEdge:
-        data[0] = avail.bottom();
         data[1] = 3;
     default:
         break;
@@ -73,6 +58,42 @@ void setSlidingWindow(WId id, Plasma::Location location)
         XDeleteProperty(dpy, id, atom);
     } else {
         XChangeProperty(dpy, id, atom, atom, 32, PropModeReplace,
+                        reinterpret_cast<unsigned char *>(data.data()), data.size());
+    }
+#endif
+}
+
+void slideWindow(QWidget *widget, Plasma::Location location)
+{
+#ifdef Q_WS_X11
+    Display *dpy = QX11Info::display();
+    Atom atom = XInternAtom( dpy, "_KDE_SLIDE", False );
+    QVarLengthArray<long, 1024> data(2);
+
+    switch (location) {
+    case LeftEdge:
+        data[0] = widget->geometry().left();
+        data[1] = 0;
+        break;
+    case TopEdge:
+        data[0] = widget->geometry().top();
+        data[1] = 1;
+        break;
+    case RightEdge:
+        data[0] = widget->geometry().right();
+        data[1] = 2;
+        break;
+    case BottomEdge:
+        data[0] = widget->geometry().bottom();
+        data[1] = 3;
+    default:
+        break;
+    }
+
+    if (location == Desktop || location == Floating) {
+        XDeleteProperty(dpy, widget->effectiveWinId(), atom);
+    } else {
+        XChangeProperty(dpy, widget->effectiveWinId(), atom, atom, 32, PropModeReplace,
                         reinterpret_cast<unsigned char *>(data.data()), data.size());
     }
 #endif
