@@ -183,11 +183,13 @@ RenderPosition RenderPosition::previousLinePosition(int x)
                 int offset;
                 box = RenderPosition::fromDOMPosition(Position(n, n->caretMaxOffset())).getInlineBoxAndOffset(offset);
                 kDebug() << "[box]" << box << offset << endl;
-                assert(box);
                 // previous root line box found
-                root = box->root();
-                containingBlock = n->renderer()->containingBlock();
-                kDebug() << "[root,block]" << root << containingBlock << endl;
+                if (box) {
+                    root = box->root();
+                    containingBlock = n->renderer()->containingBlock();
+                    kDebug() << "[root,block]" << root << containingBlock << endl;
+                }
+                return RenderPosition::fromDOMPosition(Position(n, n->caretMaxOffset())).position();
             }
         }
     }
@@ -234,10 +236,12 @@ RenderPosition RenderPosition::nextLinePosition(int x)
             if (n && inSameRootNavigableElement(n, node)) {
                 assert(n->renderer());
                 box = n->renderer()->inlineBox(n->caretMinOffset());
-                assert(box);
                 // previous root line box found
-                root = box->root();
-                containingBlock = n->renderer()->containingBlock();
+                if (box) {
+                    root = box->root();
+                    containingBlock = n->renderer()->containingBlock();
+                }
+                return Position(n, n->caretMinOffset());
             }
         }
     }
