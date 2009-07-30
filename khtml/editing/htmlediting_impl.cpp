@@ -1581,33 +1581,48 @@ void InputNewlineCommandImpl::doApply()
         printEnclosingBlockTree(selection.start().node());
         Position pos(selection.start().equivalentDownstreamPosition());
         NodeImpl *node = pos.node();
+        bool atBlockStart = pos.atStartOfContainingEditableBlock();
+        bool atBlockEnd = pos.isLastRenderedPositionInEditableBlock();
         // split text node into 2 if we are in the middle
-        if (node->isTextNode() && pos.offset() > node->caretMinOffset()) {
+        if (node->isTextNode() && !atBlockStart && !atBlockEnd) {
             TextImpl *textNode = static_cast<TextImpl*>(node);
             TextImpl *textBeforeNode = document()->createTextNode(textNode->substringData(0, selection.start().offset(), exceptionCode));
             deleteText(textNode, 0, pos.offset());
             insertNodeBefore(textBeforeNode, textNode);
             pos = Position(textNode, 0);
             setEndingSelection(pos);
-        }
-        // walk up and reattach
-        while (true) {
-            kDebug() << "[handle node]" << node << endl;
-            printEnclosingBlockTree(enclosingBlock->parent());
-            NodeImpl *parent = node->parent();
-            // FIXME copy attributes, styles etc too
-            WTF::PassRefPtr<NodeImpl> newParent = parent->cloneNode(false);
-            insertNodeAfter(newParent.get(), parent);
-            for (NodeImpl *nextSibling = 0; node; node = nextSibling) {
-                kDebug() << "[reattach sibling]" << node << endl;
-                nextSibling = node->nextSibling();
-                removeNode(node);
-                appendNode(newParent.get(), node);
+
+            // walk up and reattach
+            while (true) {
+                kDebug() << "[handle node]" << node << endl;
+                printEnclosingBlockTree(enclosingBlock->parent());
+                NodeImpl *parent = node->parent();
+                // FIXME copy attributes, styles etc too
+                RefPtr<NodeImpl> newParent = parent->cloneNode(false);
+                insertNodeAfter(newParent.get(), parent);
+                for (NodeImpl *nextSibling = 0; node; node = nextSibling) {
+                    kDebug() << "[reattach sibling]" << node << endl;
+                    nextSibling = node->nextSibling();
+                    removeNode(node);
+                    appendNode(newParent.get(), node);
+                }
+                node = newParent.get();
+                if (parent == enclosingBlock)
+                    break;
             }
-            node = newParent.get();
-            if (parent == enclosingBlock)
-                break;
+        } else if (node->isTextNode()) {
+            // insert <br> node either as previous list or the next one
+            if (atBlockStart) {
+                ElementImpl *listItem = document()->createHTMLElement("LI");
+                insertNodeBefore(listItem, enclosingBlock);
+                appendNode(listItem, document()->createHTMLElement("BR"));
+            } else {
+                ElementImpl *listItem = document()->createHTMLElement("LI");
+                insertNodeAfter(listItem, enclosingBlock);
+                appendNode(listItem, document()->createHTMLElement("BR"));
+            }
         }
+
         kDebug() << "[result]" << endl;
         printEnclosingBlockTree(enclosingBlock->parent());
         // FIXME set selection after operation
@@ -1616,6 +1631,9 @@ void InputNewlineCommandImpl::doApply()
 
     ElementImpl *breakNode = document()->createHTMLElement("BR");
     // assert(exceptionCode == 0);
+
+    kDebug() << "[insert break]" << selection << endl;
+    printEnclosingBlockTree(enclosingBlock);
 
     NodeImpl *nodeToInsert = breakNode;
     // Handle the case where there is a typing style.
