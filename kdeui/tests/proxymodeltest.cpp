@@ -135,6 +135,12 @@ void ProxyModelTest::init()
 
   m_modelSpy->stopSpying();
   m_model->clear();
+  const char *currentTag = QTest::currentDataTag();
+
+  QVERIFY(currentTag != 0);
+
+  // Get the model into the state it is expected to be in.
+  m_modelCommander->executeUntil(currentTag);
   m_modelSpy->startSpying();
 
 }
@@ -150,10 +156,9 @@ QVariantList ProxyModelTest::getSignal(SignalType type, IndexFinder parentFinder
   return QVariantList() << type << QVariant::fromValue(parentFinder) << start << end;
 }
 
-void ProxyModelTest::signalInsertion(const QString &name, IndexFinder parentFinder, int startRow, int rowsAffected, int rowCount)
+void ProxyModelTest::signalInsertion(const QString &name, IndexFinder parentFinder, int startRow, int rowsAffected, int rowCount, QList<QVariantList> signalList)
 {
   QVERIFY(startRow >= 0 && rowsAffected > 0);
-  QList<QVariantList> signalList;
   signalList << getSignal(RowsAboutToBeInserted, parentFinder, startRow, startRow + rowsAffected - 1 );
   signalList << getSignal(RowsInserted, parentFinder, startRow, startRow + rowsAffected - 1 );
 
@@ -201,9 +206,8 @@ int ProxyModelTest::getChange(bool sameParent, int start, int end, int currentPo
 }
 
 
-void ProxyModelTest::signalMove(const QString &name, IndexFinder srcFinder, int start, int end, IndexFinder destFinder, int destRow)
+void ProxyModelTest::signalMove(const QString &name, IndexFinder srcFinder, int start, int end, IndexFinder destFinder, int destRow, QList<QVariantList> signalList)
 {
-  QList<QVariantList> signalList;
   QVariantList signal;
   signal << RowsAboutToBeMoved << QVariant::fromValue(srcFinder) << start << end << QVariant::fromValue(destFinder) << destRow;
   signalList << signal;
@@ -230,10 +234,9 @@ void ProxyModelTest::signalMove(const QString &name, IndexFinder srcFinder, int 
   setExpected(name, signalList, persistentList);
 }
 
-void ProxyModelTest::signalRemoval(const QString &name, IndexFinder parentFinder, int startRow, int rowsAffected, int rowCount)
+void ProxyModelTest::signalRemoval(const QString &name, IndexFinder parentFinder, int startRow, int rowsAffected, int rowCount, QList<QVariantList> signalList)
 {
   QVERIFY(startRow >= 0 && rowsAffected > 0);
-  QList<QVariantList> signalList;
   signalList << getSignal(RowsAboutToBeRemoved, parentFinder, startRow, startRow + rowsAffected - 1 );
   signalList << getSignal(RowsRemoved, parentFinder, startRow, startRow + rowsAffected - 1 );
 
@@ -250,9 +253,8 @@ void ProxyModelTest::signalRemoval(const QString &name, IndexFinder parentFinder
   setExpected(name, signalList, persistentList);
 }
 
-void ProxyModelTest::signalDataChange(const QString &name, IndexFinder topLeft, IndexFinder bottomRight)
+void ProxyModelTest::signalDataChange(const QString &name, IndexFinder topLeft, IndexFinder bottomRight, QList<QVariantList> signalList)
 {
-  QList<QVariantList> signalList;
   QVariantList signal;
   signal << DataChanged << QVariant::fromValue(topLeft) << QVariant::fromValue(bottomRight);
   signalList << signal;
@@ -409,6 +411,13 @@ QModelIndexList ProxyModelTest::getUnchangedIndexes(const QModelIndex &parent, Q
 }
 
 
+void ProxyModelTest::doInit()
+{
+  // ProxyModelTest::init is a private slot and needs to remain so.
+  // This method allows subclasses to initialize the class properly.
+  ProxyModelTest::init();
+}
+
 void ProxyModelTest::doTest()
 {
 //   QFETCH( CommandList, commandList );
@@ -418,12 +427,6 @@ void ProxyModelTest::doTest()
   QVERIFY(currentTag != 0);
   QVERIFY(m_expectedSignals.contains(currentTag));
   QVERIFY(m_persistentChanges.contains(currentTag));
-
-  m_modelSpy->stopSpying();
-
-  // Get the model into the state it is expected to be in.
-  m_modelCommander->executeUntil(currentTag);
-  m_modelSpy->startSpying();
 
   // The signals we expect to recieve to pass this test.
   QList<QVariantList> signalList = m_expectedSignals.value(currentTag);
@@ -540,7 +543,7 @@ void ProxyModelTest::doTest()
 }
 
 
-void ProxyModelTest::testInsertAndRemove_data()
+void ProxyModelTest::testProxyModel_data()
 {
   QTest::addColumn<CommandList>("commandList");
   QTest::newRow("insert01");

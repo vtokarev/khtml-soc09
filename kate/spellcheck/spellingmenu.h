@@ -17,8 +17,8 @@
  * Boston, MA 02110-1301, USA.
 */
 
-#ifndef SPELLINGSUGGESTIONSMENU_H
-#define SPELLINGSUGGESTIONSMENU_H
+#ifndef SPELLINGMENU_H
+#define SPELLINGMENU_H
 
 #include <QObject>
 #include <QSignalMapper>
@@ -27,34 +27,45 @@
 #include <kactionmenu.h>
 #include <kmenu.h>
 #include <ktexteditor/range.h>
+#include <ktexteditor/smartrangewatcher.h>
 #include <ktexteditor/view.h>
 
 class KateDocument;
 class KateView;
 
-class KateSpellingSuggestionsMenu : public QObject {
+class KateSpellingMenu : public QObject, private KTextEditor::SmartRangeWatcher {
   Q_OBJECT
 
   public:
-    KateSpellingSuggestionsMenu(KateView *view);
-    virtual ~KateSpellingSuggestionsMenu();
+    KateSpellingMenu(KateView *view);
+    virtual ~KateSpellingMenu();
 
     void createActions(KActionCollection *ac);
 
+    void enteredMisspelledRange(KTextEditor::SmartRange *range);
+    void exitedMisspelledRange(KTextEditor::SmartRange *range);
+
   public Q_SLOTS:
-    void updateContextMenuActionStatus(KTextEditor::View *view, QMenu *menu);
+    void setEnabled(bool b);
+    void setVisible(bool b);
 
   protected:
     KateView *m_view;
-    KActionMenu *m_suggestionsMenuAction;
-    KMenu *m_suggestionsMenu;
-    KTextEditor::Range m_currentMisspelledRange;
+    KActionMenu *m_spellingMenuAction;
+    KAction *m_ignoreWordAction, *m_addToDictionaryAction;
+    KMenu *m_spellingMenu;
+    KTextEditor::SmartRange *m_currentMisspelledRange;
     QStringList m_currentSuggestions;
     QSignalMapper *m_suggestionsSignalMapper;
+
+    void rangeDeleted(KTextEditor::SmartRange *range);
 
   protected Q_SLOTS:
     void populateSuggestionsMenu();
     void replaceWordBySuggestion(const QString& suggestion);
+
+    void addCurrentWordToDictionary();
+    void ignoreCurrentWord();
 };
 
 #endif

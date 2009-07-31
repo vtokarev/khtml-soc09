@@ -95,13 +95,14 @@ public:
   void setProxyModel(QAbstractProxyModel *proxyModel);
   DynamicTreeModel* sourceModel();
 
+protected:
+  void doInit();
+
 private slots:
   void init();
 
-  void testInsertAndRemove_data();
-  void testInsertAndRemove() { doTest(); }
-
-
+  void testProxyModel_data();
+  void testProxyModel() { doTest(); }
 
 //   void testMove_data();
 //   void testMove() { doTest(); }
@@ -114,12 +115,12 @@ protected:
 
   PersistentIndexChange getChange(IndexFinder sourceFinder, int start, int end, int difference, bool toInvalid = false);
   QVariantList getSignal(SignalType type, IndexFinder parentFinder, int start, int end);
-  void signalInsertion(const QString &name, IndexFinder parentFinder, int startRow, int rowsAffected, int rowCount = -1);
-  void signalMove(const QString &name, IndexFinder srcFinder, int start, int end, IndexFinder destFinder, int destRow );
-  void signalRemoval(const QString &name, IndexFinder parentFinder, int startRow, int rowsAffected, int rowCount = -1);
+  void signalInsertion(const QString &name, IndexFinder parentFinder, int startRow, int rowsAffected, int rowCount = -1, QList<QVariantList> signalList = QList<QVariantList>());
+  void signalMove(const QString &name, IndexFinder srcFinder, int start, int end, IndexFinder destFinder, int destRow, QList<QVariantList> signalList = QList<QVariantList>());
+  void signalRemoval(const QString &name, IndexFinder parentFinder, int startRow, int rowsAffected, int rowCount = -1, QList<QVariantList> signalList = QList<QVariantList>());
   void noSignal(const QString &name);
 
-  void signalDataChange(const QString &name, IndexFinder topLeft, IndexFinder bottomRight);
+  void signalDataChange(const QString &name, IndexFinder topLeft, IndexFinder bottomRight, QList<QVariantList> signalList = QList<QVariantList>());
 
   void doTest();
   void setExpected(const QString &name, const QList<QVariantList> &list, const QList<PersistentIndexChange> &persistentChanges = QList<PersistentIndexChange>() );
