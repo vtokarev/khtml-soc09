@@ -30,7 +30,7 @@ public:
       m_omitChildren(false),
       m_omitDescendants(false),
       m_includeAllSelected(false),
-      m_rowBlocksToRemove(0)
+      m_rowsRemoved(false)
   {
 
   }
@@ -64,6 +64,10 @@ public:
     Note that this returns false if @p list contains @p idx.
   */
   bool isDescendantOf(QModelIndexList &list, const QModelIndex &idx) const;
+
+  bool isDescendantOf(const QModelIndex &ancestor, const QModelIndex &descendant) const;
+
+  QModelIndex childOfParent(const QModelIndex &ancestor, const QModelIndex &descendant) const;
 
   /**
     Returns the range in the proxy model corresponding to the range in the source model
@@ -149,11 +153,10 @@ public:
   bool m_startWithChildTrees;
   bool m_omitDescendants;
   bool m_includeAllSelected;
+  bool m_rowsRemoved;
 
   KSelectionProxyModel::FilterBehavior m_filterBehavior;
 
-  // Number of separate blocks that need to be removed as a result of sourceRowsRemoved.
-  int m_rowBlocksToRemove;
 };
 
 QModelIndexList KSelectionProxyModelPrivate::toNonPersistent(const QList<QPersistentModelIndex> &list) const
@@ -369,103 +372,141 @@ void KSelectionProxyModelPrivate::sourceRowsAboutToBeRemoved(const QModelIndex &
 {
   Q_Q(KSelectionProxyModel);
 
-  QModelIndexList affectedList;
-  for (int row = start; row <= end; row++)
+  QModelIndex firstAffectedIndex = q->sourceModel()->index(start, 0, parent);
+
+  QModelIndex proxyParent = q->mapFromSource(parent);
+  QModelIndex proxyFirstAffectedIndex = q->mapFromSource(firstAffectedIndex);
+  if ( proxyParent.isValid() )
   {
-    affectedList << parent.child(row, parent.column());
+    // Get the easy case out of the way first.
+    if (proxyFirstAffectedIndex.isValid())
+    {
+      m_rowsRemoved = true;
+      q->beginRemoveRows(proxyParent, start, end);
+      return;
+    }
+  }
+
+  QModelIndexList removedSourceIndexes;
+  removedSourceIndexes << firstAffectedIndex;
+  for (int row = start + 1; row <= end; row++)
+  {
+    QModelIndex sourceChildIndex = q->sourceModel()->index(row, 0, parent);
+    removedSourceIndexes << sourceChildIndex;
   }
 
   int proxyStart = -1;
   int proxyEnd = -1;
-  foreach(const QModelIndex &idx, m_rootIndexList)
-  {
-    if (isDescendantOf(affectedList, idx))
-    {
-      if (proxyStart == -1)
-      {
-        proxyStart = idx.row();
-        proxyEnd = proxyStart;
-      } else {
-        proxyEnd++;
-      }
 
-    } else
+  // If we are going to remove a root index and all of its descendants, we need to start
+  // at the top-most affected one.
+  for (int row = 0; row < m_rootIndexList.size(); ++row)
+  {
+    QModelIndex rootIndex = m_rootIndexList.at(row);
+    if (isDescendantOf(removedSourceIndexes, rootIndex) || removedSourceIndexes.contains(rootIndex))
     {
-      if (proxyStart != -1)
-      {
-        q->beginRemoveRows(QModelIndex(), proxyStart, proxyEnd);
-        return;
-      }
+      proxyStart = row;
+      break;
     }
   }
 
-  if (proxyStart != -1)
+  // proxyEnd points to the last affected index in m_rootIndexList affected by the removal.
+  for (int row = m_rootIndexList.size() - 1; row >= 0; --row)
   {
-    q->beginRemoveRows(QModelIndex(), proxyStart, proxyEnd);
-    return;
+    QModelIndex rootIndex = m_rootIndexList.at(row);
+
+    if (isDescendantOf(removedSourceIndexes, rootIndex) || removedSourceIndexes.contains(rootIndex))
+    {
+      proxyEnd = row;
+      break;
+    }
   }
 
-  QModelIndex proxyParent = q->mapFromSource(parent);
-
-  if (!proxyParent.isValid())
+  if (proxyStart == -1)
   {
     if (!m_startWithChildTrees)
-      // An index we don't care about.
+    {
       return;
-
+    }
+    // No index in m_rootIndexList was a descendant of a deleted row.
+    // Probably children of an index in m_rootIndex are being removed.
     if (!m_rootIndexList.contains(parent))
-      // An index we don't care about.
+    {
       return;
+    }
 
-    int proxyStartRow = getProxyInitialRow(parent);
+    int parentPosition = -1;
+    if (!parent.isValid())
+    {
+      proxyStart = start;
+    } else {
+      parentPosition = m_rootIndexList.indexOf(parent);
+      proxyStart = getTargetRow(parentPosition) + start;
+    }
 
-    proxyStartRow += start;
-    q->beginRemoveRows(QModelIndex(), proxyStartRow, proxyStartRow + (end - start));
-    return;
+    proxyEnd = proxyStart + (end - start);
+
+    // Descendants of children that are being removed must also be removed if they are also selected.
+    for (int position = parentPosition + 1; position < m_rootIndexList.size(); ++position)
+    {
+      QModelIndex nextParent = m_rootIndexList.at(position);
+      if (isDescendantOf(parent, nextParent))
+      {
+        if (end > childOfParent(parent, nextParent).row())
+        {
+          // All descendants of rows to be removed are accounted for.
+          break;
+        }
+
+        proxyEnd += q->sourceModel()->rowCount(nextParent);
+      } else {
+        break;
+      }
+    }
+  } else {
+    if (m_startWithChildTrees)
+    {
+      proxyStart = getTargetRow(proxyStart);
+
+      QModelIndex lastAffectedSourceParent = m_rootIndexList.at(proxyEnd);
+      QModelIndex lastAffectedSourceChild = q->sourceModel()->index(q->sourceModel()->rowCount(lastAffectedSourceParent) - 1, 0, lastAffectedSourceParent);
+
+      QModelIndex lastAffectedProxyChild = q->mapFromSource(lastAffectedSourceChild);
+
+      proxyEnd = lastAffectedProxyChild.row();
+    }
+
   }
 
-  if (!m_startWithChildTrees)
-    q->beginRemoveRows(proxyParent, start, end);
+  if (proxyStart == -1 || proxyEnd == -1)
+    return;
+
+  m_rowsRemoved = true;
+  q->beginRemoveRows(QModelIndex(), proxyStart, proxyEnd);
+
 }
 
 void KSelectionProxyModelPrivate::sourceRowsRemoved(const QModelIndex &parent, int start, int end)
 {
   Q_Q(KSelectionProxyModel);
+  Q_UNUSED(parent)
+  Q_UNUSED(start)
   Q_UNUSED(end)
 
-  // Rows to remove are now invalid indexes.
   QMutableListIterator<QPersistentModelIndex> it(m_rootIndexList);
-  bool rowsRemoved = false;
   while (it.hasNext())
   {
     QPersistentModelIndex idx = it.next();
     if (!idx.isValid())
     {
       it.remove();
-      rowsRemoved = true;
     }
   }
-  if (rowsRemoved)
-  {
-    q->endRemoveRows();
-    return;
-  }
 
-  QModelIndex proxyParent = q->mapFromSource(parent);
-
-  if (!proxyParent.isValid())
-  {
-    if (!m_startWithChildTrees)
-      // An index we don't care about.
-      return;
-
-    if (!m_rootIndexList.contains(parent))
-      // An index we don't care about.
-      return;
+  if (m_rowsRemoved)
     q->endRemoveRows();
-  }
-  if (!m_startWithChildTrees)
-    q->endRemoveRows();
+  m_rowsRemoved = false;
+
 }
 
 void KSelectionProxyModelPrivate::sourceRowsAboutToBeMoved(const QModelIndex &srcParent, int srcStart, int srcEnd, const QModelIndex &destParent, int destRow)
@@ -512,6 +553,41 @@ bool KSelectionProxyModelPrivate::isDescendantOf(QModelIndexList &list, const QM
   }
   return false;
 }
+
+bool KSelectionProxyModelPrivate::isDescendantOf(const QModelIndex &ancestor, const QModelIndex &descendant) const
+{
+
+  if (!descendant.isValid())
+    return false;
+
+  if (ancestor.isValid())
+    return true;
+
+  if (ancestor == descendant)
+    return false;
+
+  QModelIndex parent = descendant.parent();
+  while (parent.isValid())
+  {
+    if (parent == ancestor)
+      return true;
+
+    parent = parent.parent();
+  }
+  return false;
+}
+
+QModelIndex KSelectionProxyModelPrivate::childOfParent(const QModelIndex& ancestor, const QModelIndex& descendant) const
+{
+//   if (ancestor = )
+  QModelIndex parent = descendant.parent();
+  while (parent != ancestor)
+  {
+    parent = parent.parent();
+  }
+  return parent;
+}
+
 
 QModelIndexList KSelectionProxyModelPrivate::getNewIndexes(const QItemSelection &selection) const
 {
@@ -594,7 +670,11 @@ void KSelectionProxyModelPrivate::selectionChanged(const QItemSelection &selecte
         }
         int rowCount = q->sourceModel()->rowCount(m_rootIndexList.at(startRow));
         if (rowCount <= 0)
+        {
+          // It doesn't have any children in the model, but we need to remove it from storage anyway.
+          m_rootIndexList.removeAt(startRow);
           continue;
+        }
 
         q->beginRemoveRows(QModelIndex(), _start, _start + rowCount - 1);
         m_rootIndexList.removeAt(startRow);
@@ -776,16 +856,32 @@ int KSelectionProxyModelPrivate::getRootListRow(const QModelIndexList &list, con
     return firstCommonParent + siblingOffset;
   }
 
-  QModelIndex nextParent = rootAncestors.at(firstCommonParent + siblingOffset ).at(bestParentRow);
+  // A
+  // - B
+  //   - C
+  //   - D
+  //   - E
+  // F
+  //
+  // F is selected, then C then D. When inserting D into the model, the commonParent is B (the parent of C).
+  // The next existing sibling of B is F (in the proxy model). bestParentRow will then refer to an index on
+  // the level of a child of F (which doesn't exist - Boom!). If it doesn't exist, then we've already found
+  // the place to insert D
+  QModelIndexList ansList = rootAncestors.at(firstCommonParent + siblingOffset );
+  if (ansList.size() <= bestParentRow)
+  {
+    return firstCommonParent + siblingOffset;
+  }
+
+  QModelIndex nextParent = ansList.at(bestParentRow);
   while (nextParent == commonParent)
   {
-    QModelIndexList ansList = rootAncestors.at(firstCommonParent + siblingOffset );
     if (ansList.size() < bestParentRow + 1)
       // If the list is longer, it means that at the end of it is a descendant of the new index.
       // We insert the ancestors items first in that case.
       break;
 
-    QModelIndex nextSibling = rootAncestors.at(firstCommonParent + siblingOffset ).value(bestParentRow + 1);
+    QModelIndex nextSibling = ansList.value(bestParentRow + 1);
 
     if (!nextSibling.isValid())
     {
@@ -801,7 +897,17 @@ int KSelectionProxyModelPrivate::getRootListRow(const QModelIndexList &list, con
 
     if (rootAncestors.size() <= firstCommonParent + siblingOffset )
       break;
-    nextParent = rootAncestors.at(firstCommonParent + siblingOffset ).at(bestParentRow);
+
+    ansList = rootAncestors.at(firstCommonParent + siblingOffset );
+
+    // In the scenario above, E is selected after D, causing this loop to be entered,
+    // and requiring a similar result if the next sibling in the proxy model does not have children.
+    if (ansList.size() <= bestParentRow)
+    {
+      break;
+    }
+
+    nextParent = ansList.at(bestParentRow);
   }
 
   return firstCommonParent + siblingOffset;
@@ -1123,6 +1229,9 @@ QModelIndex KSelectionProxyModel::mapFromSource(const QModelIndex &sourceIndex) 
       }
       targetRow += sourceIndex.row();
     }
+    else if (d->m_startWithChildTrees)
+      return QModelIndex();
+
     d->m_map.insert(sourceIndex.internalPointer(), QPersistentModelIndex(sourceIndex));
     return createIndex( targetRow, sourceIndex.column(), sourceIndex.internalPointer() );
   }

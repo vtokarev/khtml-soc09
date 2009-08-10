@@ -58,6 +58,18 @@ target_link_libraries(test3  ${KDE4_KDEUI_LIBS} )
 
 ########### next target ###############
 
+set(test3a_SRCS test3amain.cpp )
+
+
+gen_kcfg_test_source(test3a test3a_SRCS)
+
+kde4_add_executable(test3a TEST ${test3a_SRCS})
+
+target_link_libraries(test3a  ${KDE4_KDEUI_LIBS} )
+
+
+########### next target ###############
+
 set(test4_SRCS test4main.cpp )
 
 
@@ -147,6 +159,7 @@ set(test11_SRCS test11main.cpp )
 
 
 gen_kcfg_test_source(test11 test11_SRCS)
+gen_kcfg_test_source(test11a test11_SRCS)
 
 kde4_add_executable(test11 TEST ${test11_SRCS})
 
@@ -185,7 +198,7 @@ set(kconfigcompiler_test_SRCS kconfigcompiler_test.cpp )
 
 kde4_add_unit_test(kconfigcompiler_test ${kconfigcompiler_test_SRCS})
 
-target_link_libraries(kconfigcompiler_test ${KDE4_KDEUI_LIBS} ${QT_QTTEST_LIBRARY})
+target_link_libraries(kconfigcompiler_test ${KDE4_KDECORE_LIBS} ${QT_QTTEST_LIBRARY})
 
 ########### install files ###############
 

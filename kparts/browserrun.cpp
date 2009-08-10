@@ -215,6 +215,17 @@ void BrowserRun::slotBrowserMimetype( KIO::Job *_job, const QString &type )
         //kDebug(1000) << "suggestedFileName=" << suggestedFileName;
         d->m_contentDisposition = job->queryMetaData("content-disposition-type");
 
+        // Preserve all the SSL related meta data information...
+        KIO::MetaData metaData = job->metaData();
+        KIO::MetaData::ConstIterator it = metaData.constBegin();
+        KIO::MetaData::ConstIterator itEnd = metaData.constEnd();
+        //kDebug(1000) << "meta data" << job->metaData();
+
+        for(; it != itEnd; ++it) {
+           if (it.key().startsWith(QLatin1String("ssl_"), Qt::CaseInsensitive))
+             d->m_args.metaData().insert(it.key(), it.value());
+        }
+
         // Make a copy to avoid a dead reference
         QString _type = type;
         job->putOnHold();

@@ -77,6 +77,7 @@ Svg *SvgWidget::svg() const
 
 void SvgWidget::setElementID(const QString &elementID)
 {
+    d->svg->setContainsMultipleImages(!elementID.isNull());
     d->elementID = elementID;
     update();
 }
@@ -93,6 +94,19 @@ void SvgWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 
     if (d->svg){
         d->svg->paint(painter, boundingRect(), d->elementID);
+    }
+}
+
+QSizeF SvgWidget::sizeHint(Qt::SizeHint which, const QSizeF & constraint) const
+{
+    if (d->svg && which == Qt::PreferredSize) {
+        if (d->elementID.isNull()) {
+            return d->svg->size();
+        } else {
+            return d->svg->elementSize(d->elementID);
+        }
+    } else {
+        return QGraphicsWidget::sizeHint(which, constraint);
     }
 }
 

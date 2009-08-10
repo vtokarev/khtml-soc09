@@ -489,19 +489,6 @@ void KateRenderer::paintTextLine(QPainter& paint, KateLineLayoutPtr range, int x
 
   paintTextLineBackground(paint, range, currentViewLine, xStart, xEnd);
 
-  // Draws the dashed underline at the start of a folded block of text.
-  if (range->startsInvisibleBlock()) {
-    paint.setRenderHint(QPainter::Antialiasing, false);
-    QPen pen(config()->wordWrapMarkerColor());
-    pen.setCosmetic(true);
-    pen.setStyle(Qt::DashLine);
-    QVector<qreal> dash = pen.dashPattern(); // workaround for N226156
-    pen.setDashOffset(xStart);
-    pen.setDashPattern(dash);
-    paint.setPen(pen);
-    paint.drawLine(0, (fm.height() * range->viewLineCount()) - 1, xEnd - xStart, (fm.height() * range->viewLineCount()) - 1);
-  }
-
   if (range->layout()) {
     QVector<QTextLayout::FormatRange> additionalFormats;
     if (range->length() > 0) {
@@ -589,8 +576,10 @@ void KateRenderer::paintTextLine(QPainter& paint, KateLineLayoutPtr range, int x
           if (range->layout()->textOption().alignment() == Qt::AlignRight)
             fillStartX = 0;
 
-          QRect area(fillStartX, fillStartY, width, height);
-          paint.fillRect(area, drawBrush);
+          if (width > 0) {
+            QRect area(fillStartX, fillStartY, width, height);
+            paint.fillRect(area, drawBrush);
+          }
         }
       }
       // Draw indent lines
@@ -709,9 +698,23 @@ void KateRenderer::paintTextLine(QPainter& paint, KateLineLayoutPtr range, int x
     }
   }
 
+  // Draws the dashed underline at the start of a folded block of text.
+  if (range->startsInvisibleBlock()) {
+    paint.setRenderHint(QPainter::Antialiasing, false);
+    QPen pen(config()->wordWrapMarkerColor());
+    pen.setCosmetic(true);
+    pen.setStyle(Qt::DashLine);
+    QVector<qreal> dash = pen.dashPattern(); // workaround for N226156
+    pen.setDashOffset(xStart);
+    pen.setDashPattern(dash);
+    paint.setPen(pen);
+    paint.drawLine(0, (fm.height() * range->viewLineCount()) - 1, xEnd - xStart, (fm.height() * range->viewLineCount()) - 1);
+  }
+
   // show word wrap marker if desirable
   if ((!isPrinterFriendly()) && config()->wordWrapMarker() && QFontInfo(config()->font()).fixedPitch())
   {
+    paint.setRenderHint(QPainter::Antialiasing, false);
     paint.setPen( config()->wordWrapMarkerColor() );
     int _x = m_doc->config()->wordWrapAt() * fm.width('x') - xStart;
     paint.drawLine( _x,0,_x,fm.height() );

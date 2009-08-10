@@ -238,6 +238,7 @@ class KateViewInternal : public QWidget, private KTextEditor::SmartRangeWatcher
     int lineToY(int viewLine) const;
 
     void updateSelection( const KTextEditor::Cursor&, bool keepSel );
+    void moveCursorToSelectionEdge();
     //The smart-lock should not be locked when this is called
     void updateCursor( const KTextEditor::Cursor& newCursor, bool force = false, bool center = false, bool calledExternally = false );
     void updateBracketMarks();
@@ -247,7 +248,7 @@ class KateViewInternal : public QWidget, private KTextEditor::SmartRangeWatcher
     void placeCursor( const QPoint& p, bool keepSelection = false, bool updateSelection = true );
     bool isTargetSelected( const QPoint& p );
     //Returns whether the given range affects the area currently visible in the view
-    bool rangeAffectsView(const KTextEditor::Range& range) const;
+    bool rangeAffectsView(const KTextEditor::Range& range, bool realCursors) const;
 
     void doDrag();
 

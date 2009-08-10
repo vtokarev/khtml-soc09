@@ -1535,16 +1535,15 @@ void KateViewInternal::cursorToMatchingBracket( bool sel )
 void KateViewInternal::topOfView( bool sel )
 {
   KTextEditor::Cursor c = viewLineOffset(startPos(), m_minLinesVisible);
-  updateSelection( c, sel );
-  updateCursor( c );
+  updateSelection( toRealCursor(c), sel );
+  updateCursor( toRealCursor(c) );
 }
 
 void KateViewInternal::bottomOfView( bool sel )
 {
-  // FIXME account for wordwrap
   KTextEditor::Cursor c = viewLineOffset(endPos(), -m_minLinesVisible);
-  updateSelection( c, sel );
-  updateCursor( c );
+  updateSelection( toRealCursor(c), sel );
+  updateCursor( toRealCursor(c) );
 }
 
 // lines is the offset to scroll by
@@ -1884,6 +1883,22 @@ void KateViewInternal::updateSelection( const KTextEditor::Cursor& _newCursor, b
   }
 }
 
+void KateViewInternal::moveCursorToSelectionEdge()
+{
+  if (!m_view->selection())
+    return;
+
+  int tmp = m_minLinesVisible;
+  m_minLinesVisible = 0;
+
+  if ( m_view->selectionRange().start() < m_selectAnchor )
+    updateCursor( m_view->selectionRange().start() );
+  else
+    updateCursor( m_view->selectionRange().end() );
+
+  m_minLinesVisible = tmp;
+}
+
 void KateViewInternal::updateCursor( const KTextEditor::Cursor& newCursor, bool force, bool center, bool calledExternally )
 {
   if ( !force && (m_cursor == newCursor) )
@@ -2167,7 +2182,13 @@ void KateViewInternal::placeCursor( const QPoint& p, bool keepSelection, bool up
   if (updateSelection)
     KateViewInternal::updateSelection( c, keepSelection );
 
+  int tmp = m_minLinesVisible;
+  m_minLinesVisible = 0;
   updateCursor( c );
+  m_minLinesVisible = tmp;
+
+  if (updateSelection)
+    moveCursorToSelectionEdge();
 }
 
 // Point in content coordinates
@@ -2551,6 +2572,8 @@ void KateViewInternal::mousePressEvent( QMouseEvent* e )
           else
           {
             m_view->selectLine( m_cursor );
+            if (m_view->selection())
+              m_selectAnchor = m_view->selectionRange().start();
           }
 
           if (m_view->selection())
@@ -2577,13 +2600,11 @@ void KateViewInternal::mousePressEvent( QMouseEvent* e )
               m_selectionCached.end() = m_view->selectionRange().end();
           }
 
-          // Set cursor to edge of selection... which edge depends on what
-          // "direction" the selection was made in
-          if ( m_view->selectionRange().start() < m_selectAnchor
-               && m_selectAnchor.line() != m_view->selectionRange().start().line() )
-            updateCursor( m_view->selectionRange().start() );
-          else
-            updateCursor( m_view->selectionRange().end() );
+          moveCursorToSelectionEdge();
+
+          m_scrollX = 0;
+          m_scrollY = 0;
+          m_scrollTimer.start (50);
 
           e->accept();
           return;
@@ -2698,6 +2719,7 @@ void KateViewInternal::mouseDoubleClickEvent(QMouseEvent *e)
         m_view->clearSelection( false, false );
         placeCursor( e->pos() );
         m_view->selectWord( m_cursor );
+        cursorToMatchingBracket(true);
 
         if (m_view->selection())
         {
@@ -2706,25 +2728,16 @@ void KateViewInternal::mouseDoubleClickEvent(QMouseEvent *e)
         }
         else
         {
-          // if we didn't actually select anything, restore the selection mode
-          // -- see bug #131369 (kling)
-          m_selectionMode = Default;
+          m_selectAnchor = m_cursor;
+          m_selectionCached = KTextEditor::Range(m_cursor, m_cursor);
         }
       }
 
       // Move cursor to end (or beginning) of selected word
       if (m_view->selection())
-      {
         QApplication::clipboard()->setText( m_view->selectionText(), QClipboard::Selection );
 
-        // Shift+DC before the "cached" word should move the cursor to the
-        // beginning of the selection, not the end
-        if (m_view->selectionRange().start() < m_selectionCached.start())
-          updateCursor( m_view->selectionRange().start() );
-        else
-          updateCursor( m_view->selectionRange().end() );
-      }
-
+      moveCursorToSelectionEdge();
       m_possibleTripleClick = true;
       QTimer::singleShot ( QApplication::doubleClickInterval(), this, SLOT(tripleClickTimeout()) );
 
@@ -2759,14 +2772,8 @@ void KateViewInternal::mouseReleaseEvent( QMouseEvent* e )
       {
         if (m_view->selection()) {
           QApplication::clipboard()->setText(m_view->selectionText (), QClipboard::Selection);
-
-          // Set cursor to edge of selection... which edge depends on what
-          // "direction" the selection was made in
-          if ( m_view->selectionRange().start() < m_selectAnchor )
-            updateCursor( m_view->selectionRange().start() );
-          else
-            updateCursor( m_view->selectionRange().end() );
         }
+        moveCursorToSelectionEdge();
 
         m_selChangedByUser = false;
       }
@@ -3655,14 +3662,17 @@ void KateViewInternal::cursorMoved( )
   dynamicMoved(false);
 }
 
-bool KateViewInternal::rangeAffectsView(const KTextEditor::Range& range) const
+bool KateViewInternal::rangeAffectsView(const KTextEditor::Range& range, bool realCursors) const
 {
-  if(range.end().line() < m_startPos.line())
-    return false;
-  if(range.start().line() > m_startPos.line() + (int)m_visibleLineCount)
-    return false;
-  
-  return true;
+  int startLine = m_startPos.line();
+  int endLine = startLine + (int)m_visibleLineCount;
+
+  if ( realCursors ) {
+    startLine = (int)doc()->getRealLine(startLine);
+    endLine = (int)doc()->getRealLine(endLine);
+  }
+
+  return (range.end().line() >= startLine) || (range.start().line() <= endLine);
 }
 
 void KateViewInternal::relayoutRange( const KTextEditor::Range & range, bool realCursors )
@@ -3675,8 +3685,9 @@ void KateViewInternal::relayoutRange( const KTextEditor::Range & range, bool rea
 
   const KateSmartRange* krange = dynamic_cast<const KateSmartRange*>(&range);
   
-  if (!m_smartDirty && (rangeAffectsView(range) ||
-       (krange && rangeAffectsView(KTextEditor::Range(krange->kStart().lastPosition(), krange->kEnd().lastPosition()))))) {
+  if (!m_smartDirty && (rangeAffectsView(range, realCursors) ||
+       (krange && rangeAffectsView(KTextEditor::Range(krange->kStart().lastPosition(),
+                                                      krange->kEnd().lastPosition()), realCursors)))) {
     m_smartDirty = true;
     emit requestViewUpdateIfSmartDirty();
   }

@@ -674,7 +674,7 @@ bool Theme::useNativeWidgetStyle() const
 bool Theme::findInCache(const QString &key, QPixmap &pix)
 {
     if (d->useCache()) {
-        const QString id = d->keysToCache[key];
+        const QString id = d->keysToCache.value(key);
         if (d->pixmapsToCache.contains(id)) {
             pix = d->pixmapsToCache.value(id);
             return true;
@@ -690,7 +690,7 @@ bool Theme::findInCache(const QString &key, QPixmap &pix)
 bool Theme::findInCache(const QString &key, QPixmap &pix, unsigned int lastModified)
 {
     if (d->useCache() && lastModified > d->pixmapCache->timestamp()) {
-        d->discardCache(true);
+        return false;
     }
 
     return findInCache(key, pix);
@@ -731,9 +731,9 @@ bool Theme::findInRectsCache(const QString &image, const QString &element, QRect
         return true;
     }
 
-    //A single _ means the element is empty and we're asked for the size of
+    //Name starting by _ means the element is empty and we're asked for the size of
     //the whole image, so the whole image is never invalid
-    if (element.count('_') == 1) {
+    if (element.indexOf('_') <= 0) {
         return false;
     }
 
@@ -786,6 +786,8 @@ void Theme::releaseRectsCache(const QString &image)
 {
     QHash<QString, QSet<QString> >::iterator it = d->invalidElements.find(image);
     if (it != d->invalidElements.end()) {
+        KConfigGroup imageGroup(d->svgElementsCache, it.key());
+        imageGroup.writeEntry("invalidElements", it.value().toList());
         d->invalidElements.erase(it);
     }
 }

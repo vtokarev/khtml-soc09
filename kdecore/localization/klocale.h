@@ -703,6 +703,8 @@ public:
   bool dateMonthNamePossessive() const;
 
   /**
+   * @deprecated replaced by formatLocaleTime()
+   *
    * Returns a string formatted to the current locale's conventions
    * regarding times.
    *
@@ -717,6 +719,40 @@ public:
   QString formatTime(const QTime &pTime, bool includeSecs = false,
                      bool isDuration = false) const;
 
+    /**
+     * @since 4.4
+     *
+     * Format flags for readLocaleTime() and formatLocaleTime()
+     */
+    enum TimeFormatOption {
+        TimeDefault        = 0x0,   ///< Default formatting using seconds and the format
+                                    ///< as specified by the locale.
+        TimeWithoutSeconds = 0x1,   ///< Exclude the seconds part of the time from display
+        TimeWithoutAmPm    = 0x2,   ///< Read/format time string without am/pm suffix but
+                                    ///< keep the 12/24h format as specified by locale time
+                                    ///< format, eg. "07.33.05" instead of "07.33.05 pm" for
+                                    ///< time format "%I.%M.%S %p".
+        TimeDuration       = 0x6   ///< Read/format time string as duration. This will strip
+                                    ///< the am/pm suffix and read/format times with an hour
+                                    ///< value of 0-23 hours, eg. "19.33.05" instead of
+                                    ///< "07.33.05 pm" for time format "%I.%M.%S %p".
+                                    ///< This automatically implies @c TimeWithoutAmPm.
+    };
+    Q_DECLARE_FLAGS(TimeFormatOptions, TimeFormatOption)
+                     
+    /**
+     * @since 4.4
+     *
+     * Returns a string formatted to the current locale's conventions
+     * regarding times.
+     *
+     * @param pTime the time to be formatted
+     * @param option format option to use when formatting the time
+     * @return The time as a string
+     */
+    QString formatLocaleTime(const QTime &pTime,
+                             TimeFormatOptions options = KLocale::TimeDefault) const;
+                     
   /**
    * @since 4.3
    *
@@ -867,13 +903,18 @@ public:
   QTime readTime(const QString &str, bool* ok = 0) const;
 
   /**
-   * Flags for readTime()
+   * Flags for the old version of readTime()
+   *
+   * @deprecated replaced by TimeFormatOptions
    */
   enum ReadTimeFlags {
       WithSeconds = 0,    ///< Only accept a time string with seconds. Default (no flag set)
       WithoutSeconds = 1  ///< Only accept a time string without seconds.
   }; // (maybe use this enum as a bitfield, if adding independent features?)
+
   /**
+   * @deprecated replaced readLocaleTime()
+   *
    * Converts a localized time string to a QTime.
    * This method is stricter than readTime(str,&ok): it will either accept
    * a time with seconds or a time without seconds.
@@ -888,6 +929,44 @@ public:
    */
   QTime readTime(const QString &str, ReadTimeFlags flags, bool *ok = 0) const;
 
+    /**
+     * Additional processing options for readLocaleTime().
+     *
+     * @remarks This is currently used as an enum but declared as a flag
+     *          to be extensible
+     */
+    enum TimeProcessingOption {
+        ProcessStrict    = 0x1,    ///< Process time in a strict manner, ie.
+                                   ///< a read time string has to exactly match
+                                   ///< the defined time format.
+        ProcessNonStrict = 0x2     ///< Process time in a lax manner, ie.
+                                   ///< allow spaces in the time-format to be
+                                   ///< left out when entering a time string.
+    };
+    Q_DECLARE_FLAGS(TimeProcessingOptions, TimeProcessingOption)
+  
+    /**
+     * @since 4.4
+     *
+     * Converts a localized time string to a QTime.
+     * This method is stricter than readTime(str, &ok) in that it will either
+     * accept a time with seconds or a time without seconds.
+     *
+     * @param str the string we want to convert
+     * @param ok the boolean that is set to false if it's not a valid time.
+     *           If @p ok is 0, it will be ignored.
+     * @param option format option to apply when formatting the time
+     * @param processing if set to @c ProcessStrict, checking will be strict
+     *               and the read time string has to have the exact time format
+     *               specified. If set to @c ProcessNonStrict processing the time
+     *               is lax and spaces in the time string can be left out.
+     *
+     * @return The string converted to a QTime
+     */
+    QTime readLocaleTime(const QString &str, bool *ok = 0,
+                         TimeFormatOptions options = KLocale::TimeDefault,
+                         TimeProcessingOptions processing = ProcessNonStrict) const;
+  
   /**
    * Returns the language code used by this object. The domain AND the
    * library translation must be available in this language.
@@ -1514,5 +1593,7 @@ private:
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(KLocale::DateTimeFormatOptions)
+Q_DECLARE_OPERATORS_FOR_FLAGS(KLocale::TimeFormatOptions)
+Q_DECLARE_OPERATORS_FOR_FLAGS(KLocale::TimeProcessingOptions)
 
 #endif

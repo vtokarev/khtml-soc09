@@ -19,11 +19,12 @@
 #include <QtCore/QProcess>
 #include <QtCore/QString>
 #include <kdebug.h>
+#include <kstandarddirs.h>
 #include <qtest_kde.h>
 #include "kconfigcompiler_test.h"
 #include "kconfigcompiler_test.moc"
 
-QTEST_KDEMAIN( KConfigCompiler_Test, NoGUI )
+QTEST_KDEMAIN_CORE(KConfigCompiler_Test)
 
 typedef const char * CompilerTestSet[];
 
@@ -32,6 +33,7 @@ static CompilerTestSet testCases =
 	"test1.cpp", "test1.h",
 	"test2.cpp", "test2.h",
 	"test3.cpp", "test3.h",
+	"test3a.cpp", "test3a.h",
 	"test4.cpp", "test4.h",
 	"test5.cpp", "test5.h",
 	"test6.cpp", "test6.h",
@@ -41,6 +43,7 @@ static CompilerTestSet testCases =
 	"test9.h", "test9.cpp",
 	"test10.h", "test10.cpp",
 	"test11.h", "test11.cpp",
+	"test11a.h", "test11a.cpp",
 	"test_dpointer.cpp", "test_dpointer.h",
 	"test_signal.cpp", "test_signal.h",
 	NULL
@@ -51,6 +54,7 @@ static CompilerTestSet testCasesToRun =
     "test1",
     "test2",
     "test3",
+    "test3a",
     "test4",
     "test5",
     "test6",
@@ -70,6 +74,17 @@ static CompilerTestSet willFailCases =
 	//"test9.cpp", NULL
 	NULL
 };
+
+void KConfigCompiler_Test::initTestCase()
+{
+    m_diffExe = KStandardDirs::findExe("diff");
+    if (!m_diffExe.isEmpty()) {
+        m_diff.setFileName(QDir::currentPath() + QLatin1String("/kconfigcompiler_test_differences.diff"));
+        if (m_diff.exists()) {
+            m_diff.remove();
+        }
+    }
+}
 
 void KConfigCompiler_Test::testBaselineComparison_data()
 {
@@ -120,9 +135,15 @@ void KConfigCompiler_Test::performCompare(const QString &fileName, bool fail)
 		QString contentRef = fileRef.readAll();
 
 		if (!fail)
+		{
+			if ( content != contentRef )
+			{
+				appendFileDiff( fileRef.fileName(), file.fileName() );
+			}
 			// use QVERIFY instead of QCOMPARE to avoid having
 			// the whole output shown inline
 			QVERIFY( content == contentRef );
+		}
 		else
                     QFAIL( "not implemented" ); // missing in qttestlib?
                 // wrong? QEXPECT_FAIL( "", content, contentRef );
@@ -131,4 +152,30 @@ void KConfigCompiler_Test::performCompare(const QString &fileName, bool fail)
 	{
 		QSKIP("Can't open file for comparison", SkipSingle);
 	}
+}
+
+void KConfigCompiler_Test::appendFileDiff(const QString &oldFile, const QString &newFile)
+{
+    if (m_diffExe.isEmpty()) {
+        return;
+    }
+    if (!m_diff.isOpen()) {
+        if (!m_diff.open(QIODevice::WriteOnly)) {
+            return;
+        }
+    }
+
+    QStringList args;
+    args << "-u";
+    args << QFileInfo(oldFile).absoluteFilePath();
+    args << QFileInfo(newFile).absoluteFilePath();
+
+    QProcess process;
+    process.start(m_diffExe, args, QIODevice::ReadOnly);
+    process.waitForStarted();
+    process.waitForFinished();
+    if (process.exitCode() == 1) {
+        QByteArray out = process.readAllStandardOutput();
+        m_diff.write(out);
+    }
 }

@@ -1579,7 +1579,7 @@ void KateView::ensureCursorColumnValid()
   KTextEditor::Cursor c = m_viewInternal->getCursor();
 
   // make sure the cursor is valid:
-  // - in block selection mode or if wrap cursor is off, the colum is arbitrary
+  // - in block selection mode or if wrap cursor is off, the column is arbitrary
   // - otherwise: it's bounded by the line length
   if (!blockSelectionMode() && wrapCursor()
       && (!c.isValid() || c.column() > m_doc->lineLength(c.line())))
@@ -1696,7 +1696,7 @@ bool KateView::setSelection( const KTextEditor::Range &selection )
   QMutexLocker l(m_doc->smartMutex());
 
   KTextEditor::Range oldSelection = *m_selection;
-  *m_selection = selection;
+  *m_selection = selection.isEmpty() ? KTextEditor::Range::invalid() : selection;
 
   tagSelection(oldSelection);
 
@@ -1738,9 +1738,6 @@ bool KateView::clearSelection(bool redraw, bool finishedChangingSelection)
 
 bool KateView::selection() const
 {
-  if (m_selection->isEmpty())
-      return false;
-
   if(blockSelection())
     return *m_selection != KateSmartRange::invalid();
   else
@@ -1895,7 +1892,7 @@ void KateView::cut()
 
   copy();
   if (!selection())
-    selectLine(m_viewInternal->m_displayCursor);
+    selectLine(m_viewInternal->m_cursor);
   removeSelectedText();
 }
 
@@ -1906,7 +1903,7 @@ void KateView::copy() const
   if (!selection()) {
     if (!m_config->smartCopyCut())
       return;
-    int line = m_viewInternal->m_displayCursor.line();
+    int line = m_viewInternal->m_cursor.line();
     if ( line+1 >= m_doc->lines() )
       text = m_doc->text(KTextEditor::Range(line, 0, line, m_doc->lineLength(line)));
     else
