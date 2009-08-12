@@ -258,13 +258,13 @@ long CharacterDataImpl::maxOffset() const
 long CharacterDataImpl::caretMinOffset() const
 {
     RenderText *r = static_cast<RenderText *>(renderer());
-    return r && r->isText() ? r->caretMinOffset() : 0;
+    return r && r->isText() ? r->convertToDOMPosition(r->caretMinOffset()) : 0;
 }
 
 long CharacterDataImpl::caretMaxOffset() const
 {
     RenderText *r = static_cast<RenderText *>(renderer());
-    return r && r->isText() ? r->caretMaxOffset() : (long)length();
+    return r && r->isText() ? r->convertToDOMPosition(r->caretMaxOffset()) : (long)length();
 }
 
 unsigned long CharacterDataImpl::caretMaxRenderedOffset() const
