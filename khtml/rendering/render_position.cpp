@@ -154,12 +154,12 @@ RenderPosition RenderPosition::previousLinePosition(int x)
     int rOffset;
     NodeImpl* node = m_position.node();
     InlineBox *box = getInlineBoxAndOffset(rOffset);
-    if (!box)
-        return *this;
     kDebug() << "[box;offset]" << box << rOffset << endl;
 
     RenderBlock *containingBlock = 0;
-    RootInlineBox *root = box->root()->prevRootBox();
+    RootInlineBox *root = 0;
+    if (box)
+        root = box->root()->prevRootBox();
     kDebug() << "[root]" << root << endl;
     if (root) {
         containingBlock = node->renderer()->containingBlock();
@@ -214,12 +214,12 @@ RenderPosition RenderPosition::nextLinePosition(int x)
     int rOffset;
     NodeImpl* node = m_position.node();
     InlineBox *box = getInlineBoxAndOffset(rOffset);
-    if (!box)
-        return *this;
     kDebug() << "[box;offset]" << box << rOffset << endl;
 
     RenderBlock *containingBlock = 0;
-    RootInlineBox *root = box->root()->nextRootBox();
+    RootInlineBox *root = 0;
+    if (box)
+        root = box->root()->nextRootBox();
     if (root) {
         containingBlock = node->renderer()->containingBlock();
     } else {
