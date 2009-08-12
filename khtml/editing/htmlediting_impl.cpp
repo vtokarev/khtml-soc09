@@ -1615,11 +1615,9 @@ void InputNewlineCommandImpl::doApply()
             if (atBlockStart) {
                 ElementImpl *listItem = document()->createHTMLElement("LI");
                 insertNodeBefore(listItem, enclosingBlock);
-                appendNode(listItem, document()->createHTMLElement("BR"));
             } else {
                 ElementImpl *listItem = document()->createHTMLElement("LI");
                 insertNodeAfter(listItem, enclosingBlock);
-                appendNode(listItem, document()->createHTMLElement("BR"));
             }
         }
 
