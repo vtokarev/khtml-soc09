@@ -2739,8 +2739,42 @@ void IndentOutdentCommandImpl::indent()
             }
         }
     } else {
-        kDebug() << "[different blocks are not supported yet]" << endl;
+        if (startBlock->id() == ID_LI && endBlock->id() == ID_LI && startBlock->parent() == endBlock->parent()) {
+            kDebug() << "[indent some items inside list]" << endl;
+            RefPtr<NodeImpl> nestedList = startBlock->parent()->cloneNode(false);
+            insertNodeBefore(nestedList.get(), startBlock);
+            NodeImpl *nextNode = 0;
+            for (NodeImpl *node = startBlock;; node = nextNode) {
+                nextNode = node->nextSibling();
+                removeNode(node);
+                appendNode(nestedList.get(), node);
+                if (node == endBlock)
+                    break;
+            }
+        } else {
+            kDebug() << "[blocks not from one list are not supported yet]" << endl;
+        }
     }
+}
+
+static bool hasPreviousListItem(NodeImpl *node)
+{
+    while (node) {
+        node = node->previousSibling();
+        if (node && node->id() == ID_LI)
+            return true;
+    }
+    return false;
+}
+
+static bool hasNextListItem(NodeImpl *node)
+{
+    while (node) {
+        node = node->nextSibling();
+        if (node && node->id() == ID_LI)
+            return true;
+    }
+    return false;
 }
 
 void IndentOutdentCommandImpl::outdent()
@@ -2750,26 +2784,61 @@ void IndentOutdentCommandImpl::outdent()
     NodeImpl *startBlock = selection.start().node()->enclosingBlockFlowElement();
     NodeImpl *endBlock = selection.end().node()->enclosingBlockFlowElement();
 
-    if (startBlock == endBlock) {
-        if (startBlock->id() == ID_LI) {
-            bool singleItemList = !startBlock->nextSibling() && !startBlock->previousSibling();
-            NodeImpl *listNode = startBlock->parent();
-            bool hasParentList = listNode->parent()->id() == ID_OL || listNode->parent()->id() == ID_UL;
-            if (hasParentList) {
-                removeNode(startBlock);
-                insertNodeAfter(startBlock, listNode);
-            } else {
-                // split the list into 2?
+    if (startBlock->id() == ID_LI && endBlock->id() == ID_LI && startBlock->parent() == endBlock->parent()) {
+        kDebug() << "[list items selected]" << endl;
+        bool firstItemSelected = !hasPreviousListItem(startBlock);
+        bool lastItemSelected = !hasNextListItem(endBlock);
+        bool listFullySelected = firstItemSelected && lastItemSelected;
+
+        kDebug() << "[first/last item selected]" << firstItemSelected << lastItemSelected << endl;
+
+        NodeImpl *listNode = startBlock->parent();
+        printEnclosingBlockTree(listNode);
+        bool hasParentList = listNode->parent()->id() == ID_OL || listNode->parent()->id() == ID_UL;
+
+        if (!firstItemSelected && !lastItemSelected) {
+            // split the list into 2 and reattach all the nodes before the first selected item to the second list
+            RefPtr<NodeImpl> clonedList = listNode->cloneNode(false);
+            NodeImpl *nextNode = 0;
+            for (NodeImpl *node = listNode->firstChild(); node != startBlock; node = nextNode) {
+                nextNode = node->nextSibling();
+                removeNode(node);
+                appendNode(clonedList.get(), node);
             }
-            if (singleItemList)
-                removeNode(listNode);
-        } else if (startBlock->id() == ID_BLOCKQUOTE) {
+            insertNodeBefore(clonedList.get(), listNode);
+            // so now the first item selected
+            firstItemSelected = true;
+        }
+
+        NodeImpl *nextNode = 0;
+        for (NodeImpl *node = firstItemSelected ? startBlock : endBlock;; node = nextNode) {
+            nextNode = firstItemSelected ? node->nextSibling() : node->previousSibling();
+            removeNode(node);
+            if (firstItemSelected)
+                insertNodeBefore(node, listNode);
+            else
+                insertNodeAfter(node, listNode);
+            if (!hasParentList && node->id() == ID_LI) {
+                insertNodeAfter(document()->createHTMLElement("BR"), node);
+                removeNodePreservingChildren(node);
+            }
+            if (node == (firstItemSelected ? endBlock : startBlock))
+                break;
+        }
+        if (listFullySelected)
+            removeNode(listNode);
+        return;
+    }
+
+
+    if (startBlock == endBlock) {
+        if (startBlock->id() == ID_BLOCKQUOTE) {
             removeNodePreservingChildren(startBlock);
         } else {
             kDebug() << "[not the list or blockquote]" << endl;
         }
     } else {
-        kDebug() << "[different blocks are not supported yet]" << endl;
+        kDebug() << "[blocks not from one list are not supported yet]" << endl;
     }
 }
 
